@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"entgo.io/ent/dialect/gremlin/graph/dsl"
-	"entgo.io/ent/dialect/sql"
+	sql "entgo.io/ent/dialect/sql/builder"
 )
 
 // A SchemaMode defines what type of schema feature a storage driver support.
