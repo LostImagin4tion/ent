@@ -14,6 +14,7 @@ import (
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/builder"
 	"entgo.io/ent/schema/field"
 
 	"ariga.io/atlas/sql/migrate"
@@ -78,11 +79,11 @@ func (d *SQLite) init(ctx context.Context) error {
 }
 
 func (d *SQLite) tableExist(ctx context.Context, conn dialect.ExecQuerier, name string) (bool, error) {
-	query, args := sql.Select().Count().
-		From(sql.Table("sqlite_master")).
-		Where(sql.And(
-			sql.EQ("type", "table"),
-			sql.EQ("name", name),
+	query, args := builder.Select().Count().
+		From(builder.Table("sqlite_master")).
+		Where(builder.And(
+			builder.EQ("type", "table"),
+			builder.EQ("name", name),
 		)).
 		Query()
 	return exist(ctx, conn, query, args...)

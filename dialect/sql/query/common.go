@@ -22,12 +22,12 @@ func Distinct(idents ...string) string {
 	return b.String()
 }
 
-func isAlias(s string) bool {
-	return strings.Contains(s, " AS ") || strings.Contains(s, " as ")
+func IsFunc(s string) bool {
+	return strings.Contains(s, "(") && strings.Contains(s, ")")
 }
 
-func isFunc(s string) bool {
-	return strings.Contains(s, "(") && strings.Contains(s, ")")
+func isAlias(s string) bool {
+	return strings.Contains(s, " AS ") || strings.Contains(s, " as ")
 }
 
 func isModifier(s string) bool {

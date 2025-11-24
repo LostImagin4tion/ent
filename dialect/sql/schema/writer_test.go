@@ -15,6 +15,7 @@ import (
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/builder"
 	"entgo.io/ent/dialect/sql/sqljson"
 
 	"ariga.io/atlas/sql/migrate"
@@ -42,20 +43,20 @@ func TestWriteDriver(t *testing.T) {
 	require.Empty(t, lines[2], "file ends with blank line")
 
 	b.Reset()
-	query, args := sql.Update("users").Schema("test").Set("a", 1).Set("b", "a").Set("c", "'c'").Set("d", true).Where(sql.EQ("p", 0.2)).Query()
+	query, args := builder.Update("users").Schema("test").Set("a", 1).Set("b", "a").Set("c", "'c'").Set("d", true).Where(builder.EQ("p", 0.2)).Query()
 	err = w.Exec(ctx, query, args, nil)
 	require.NoError(t, err)
 	require.Equal(t, "UPDATE `test`.`users` SET `a` = 1, `b` = 'a', `c` = '''c''', `d` = 1 WHERE `p` = 0.2;\n", b.String())
 
 	b.Reset()
-	query, args = sql.Dialect(dialect.MySQL).Update("users").Schema("test").Set("a", "{}").Where(sqljson.ValueIsNull("a")).Query()
+	query, args = builder.Dialect(dialect.MySQL).Update("users").Schema("test").Set("a", "{}").Where(sqljson.ValueIsNull("a")).Query()
 	err = w.Exec(ctx, query, args, nil)
 	require.NoError(t, err)
 	require.Equal(t, "UPDATE `test`.`users` SET `a` = '{}' WHERE JSON_CONTAINS(`a`, 'null', '$');\n", b.String())
 
 	b.Reset()
 	w = NewWriteDriver(dialect.Postgres, b)
-	query, args = sql.Dialect(dialect.Postgres).Update("users").Set("id", uuid.Nil).Set("a", 1).Set("b", time.Now()).Query()
+	query, args = builder.Dialect(dialect.Postgres).Update("users").Set("id", uuid.Nil).Set("a", 1).Set("b", time.Now()).Query()
 	err = w.Exec(ctx, query, args, nil)
 	require.NoError(t, err)
 	require.Equal(t, `UPDATE "users" SET "id" = '00000000-0000-0000-0000-000000000000', "a" = 1, "b" = {{ TIME_VALUE }};`+"\n", b.String())

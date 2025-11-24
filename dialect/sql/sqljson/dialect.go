@@ -9,7 +9,7 @@ import (
 	"reflect"
 
 	"entgo.io/ent/dialect"
-	"entgo.io/ent/dialect/sql"
+	sql "entgo.io/ent/dialect/sql/builder"
 )
 
 type sqlite struct{}

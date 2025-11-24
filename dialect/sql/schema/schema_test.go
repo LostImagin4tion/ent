@@ -12,7 +12,7 @@ import (
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/entsql"
-	"entgo.io/ent/dialect/sql"
+	sql "entgo.io/ent/dialect/sql/builder"
 	"entgo.io/ent/schema/field"
 
 	"github.com/stretchr/testify/require"

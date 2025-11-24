@@ -14,6 +14,7 @@ import (
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/builder"
 	"entgo.io/ent/schema/field"
 
 	"ariga.io/atlas/sql/migrate"
@@ -53,24 +54,26 @@ func (d *MySQL) init(ctx context.Context) error {
 }
 
 func (d *MySQL) tableExist(ctx context.Context, conn dialect.ExecQuerier, name string) (bool, error) {
-	query, args := sql.Select(sql.Count("*")).From(sql.Table("TABLES").Schema("INFORMATION_SCHEMA")).
-		Where(sql.And(
+	query, args := builder.Select(builder.Count("*")).
+		From(builder.Table("TABLES").
+			Schema("INFORMATION_SCHEMA")).
+		Where(builder.And(
 			d.matchSchema(),
-			sql.EQ("TABLE_NAME", name),
+			builder.EQ("TABLE_NAME", name),
 		)).Query()
 	return exist(ctx, conn, query, args...)
 }
 
 // matchSchema returns the predicate for matching table schema.
-func (d *MySQL) matchSchema(columns ...string) *sql.Predicate {
+func (d *MySQL) matchSchema(columns ...string) *builder.Predicate {
 	column := "TABLE_SCHEMA"
 	if len(columns) > 0 {
 		column = columns[0]
 	}
 	if d.schema != "" {
-		return sql.EQ(column, d.schema)
+		return builder.EQ(column, d.schema)
 	}
-	return sql.EQ(column, sql.Raw("(SELECT DATABASE())"))
+	return builder.EQ(column, builder.Raw("(SELECT DATABASE())"))
 }
 
 func (d *MySQL) atOpen(conn dialect.ExecQuerier) (migrate.Driver, error) {

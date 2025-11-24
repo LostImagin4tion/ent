@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"entgo.io/ent/dialect"
+	sql "entgo.io/ent/dialect/sql/builder"
 )
 
 // The following helpers exist to simplify the way raw predicates
@@ -16,184 +17,184 @@ import (
 // full predicates API, check out the sql.P in builder.go.
 
 // FieldIsNull returns a raw predicate to check if the given field is NULL.
-func FieldIsNull(name string) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(IsNull(s.C(name)))
+func FieldIsNull(name string) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(name)))
 	}
 }
 
 // FieldNotNull returns a raw predicate to check if the given field is not NULL.
-func FieldNotNull(name string) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(NotNull(s.C(name)))
+func FieldNotNull(name string) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(name)))
 	}
 }
 
 // FieldEQ returns a raw predicate to check if the given field equals to the given value.
-func FieldEQ(name string, v any) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(EQ(s.C(name), v))
+func FieldEQ(name string, v any) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(name), v))
 	}
 }
 
 // FieldsEQ returns a raw predicate to check if the given fields (columns) are equal.
-func FieldsEQ(field1, field2 string) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(ColumnsEQ(s.C(field1), s.C(field2)))
+func FieldsEQ(field1, field2 string) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.ColumnsEQ(s.C(field1), s.C(field2)))
 	}
 }
 
 // FieldNEQ returns a raw predicate to check if the given field does not equal to the given value.
-func FieldNEQ(name string, v any) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(NEQ(s.C(name), v))
+func FieldNEQ(name string, v any) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(name), v))
 	}
 }
 
 // FieldsNEQ returns a raw predicate to check if the given fields (columns) are not equal.
-func FieldsNEQ(field1, field2 string) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(ColumnsNEQ(s.C(field1), s.C(field2)))
+func FieldsNEQ(field1, field2 string) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.ColumnsNEQ(s.C(field1), s.C(field2)))
 	}
 }
 
 // FieldGT returns a raw predicate to check if the given field is greater than the given value.
-func FieldGT(name string, v any) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(GT(s.C(name), v))
+func FieldGT(name string, v any) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(name), v))
 	}
 }
 
 // FieldsGT returns a raw predicate to check if field1 is greater than field2.
-func FieldsGT(field1, field2 string) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(ColumnsGT(s.C(field1), s.C(field2)))
+func FieldsGT(field1, field2 string) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.ColumnsGT(s.C(field1), s.C(field2)))
 	}
 }
 
 // FieldGTE returns a raw predicate to check if the given field is greater than or equal the given value.
-func FieldGTE(name string, v any) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(GTE(s.C(name), v))
+func FieldGTE(name string, v any) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(name), v))
 	}
 }
 
 // FieldsGTE returns a raw predicate to check if field1 is greater than or equal field2.
-func FieldsGTE(field1, field2 string) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(ColumnsGTE(s.C(field1), s.C(field2)))
+func FieldsGTE(field1, field2 string) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.ColumnsGTE(s.C(field1), s.C(field2)))
 	}
 }
 
 // FieldLT returns a raw predicate to check if the value of the field is less than the given value.
-func FieldLT(name string, v any) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(LT(s.C(name), v))
+func FieldLT(name string, v any) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(name), v))
 	}
 }
 
 // FieldsLT returns a raw predicate to check if field1 is lower than field2.
-func FieldsLT(field1, field2 string) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(ColumnsLT(s.C(field1), s.C(field2)))
+func FieldsLT(field1, field2 string) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.ColumnsLT(s.C(field1), s.C(field2)))
 	}
 }
 
 // FieldLTE returns a raw predicate to check if the value of the field is less than the given value.
-func FieldLTE(name string, v any) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(LTE(s.C(name), v))
+func FieldLTE(name string, v any) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(name), v))
 	}
 }
 
 // FieldsLTE returns a raw predicate to check if field1 is lower than or equal field2.
-func FieldsLTE(field1, field2 string) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(ColumnsLTE(s.C(field1), s.C(field2)))
+func FieldsLTE(field1, field2 string) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.ColumnsLTE(s.C(field1), s.C(field2)))
 	}
 }
 
 // FieldsHasPrefix returns a raw predicate to checks if field1 begins with the value of field2.
-func FieldsHasPrefix(field1, field2 string) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(ColumnsHasPrefix(s.C(field1), s.C(field2)))
+func FieldsHasPrefix(field1, field2 string) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.ColumnsHasPrefix(s.C(field1), s.C(field2)))
 	}
 }
 
 // FieldIn returns a raw predicate to check if the value of the field is IN the given values.
-func FieldIn[T any](name string, vs ...T) func(*Selector) {
-	return func(s *Selector) {
+func FieldIn[T any](name string, vs ...T) func(*sql.Selector) {
+	return func(s *sql.Selector) {
 		v := make([]any, len(vs))
 		for i := range v {
 			v[i] = vs[i]
 		}
-		s.Where(In(s.C(name), v...))
+		s.Where(sql.In(s.C(name), v...))
 	}
 }
 
 // FieldNotIn returns a raw predicate to check if the value of the field is NOT IN the given values.
-func FieldNotIn[T any](name string, vs ...T) func(*Selector) {
-	return func(s *Selector) {
+func FieldNotIn[T any](name string, vs ...T) func(*sql.Selector) {
+	return func(s *sql.Selector) {
 		v := make([]any, len(vs))
 		for i := range v {
 			v[i] = vs[i]
 		}
-		s.Where(NotIn(s.C(name), v...))
+		s.Where(sql.NotIn(s.C(name), v...))
 	}
 }
 
 // FieldEqualFold returns a raw predicate to check if the field is equal to the given string under case-folding.
-func FieldEqualFold(name string, substr string) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(EqualFold(s.C(name), substr))
+func FieldEqualFold(name string, substr string) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.EqualFold(s.C(name), substr))
 	}
 }
 
 // FieldHasPrefix returns a raw predicate to check if the field has the given prefix.
-func FieldHasPrefix(name string, prefix string) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(HasPrefix(s.C(name), prefix))
+func FieldHasPrefix(name string, prefix string) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.HasPrefix(s.C(name), prefix))
 	}
 }
 
 // FieldHasPrefixFold returns a raw predicate to check if the field has the given prefix with case-folding
-func FieldHasPrefixFold(name string, prefix string) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(HasPrefixFold(s.C(name), prefix))
+func FieldHasPrefixFold(name string, prefix string) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.HasPrefixFold(s.C(name), prefix))
 	}
 }
 
 // FieldHasSuffix returns a raw predicate to check if the field has the given suffix.
-func FieldHasSuffix(name string, suffix string) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(HasSuffix(s.C(name), suffix))
+func FieldHasSuffix(name string, suffix string) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.HasSuffix(s.C(name), suffix))
 	}
 }
 
 // FieldHasSuffixFold returns a raw predicate to check if the field has the given suffix with case-folding
-func FieldHasSuffixFold(name string, suffix string) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(HasSuffixFold(s.C(name), suffix))
+func FieldHasSuffixFold(name string, suffix string) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.HasSuffixFold(s.C(name), suffix))
 	}
 }
 
 // FieldContains returns a raw predicate to check if the field contains the given substring.
-func FieldContains(name string, substr string) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(Contains(s.C(name), substr))
+func FieldContains(name string, substr string) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.Contains(s.C(name), substr))
 	}
 }
 
 // FieldContainsFold returns a raw predicate to check if the field contains the given substring with case-folding.
-func FieldContainsFold(name string, substr string) func(*Selector) {
-	return func(s *Selector) {
-		s.Where(ContainsFold(s.C(name), substr))
+func FieldContainsFold(name string, substr string) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.ContainsFold(s.C(name), substr))
 	}
 }
 
 // AndPredicates returns a new predicate for joining multiple generated predicates with AND between them.
-func AndPredicates[P ~func(*Selector)](predicates ...P) func(*Selector) {
-	return func(s *Selector) {
+func AndPredicates[P ~func(*sql.Selector)](predicates ...P) func(*sql.Selector) {
+	return func(s *sql.Selector) {
 		s.CollectPredicates()
 		for _, p := range predicates {
 			p(s)
@@ -205,14 +206,14 @@ func AndPredicates[P ~func(*Selector)](predicates ...P) func(*Selector) {
 		case 1:
 			s.Where(collected[0])
 		default:
-			s.Where(And(collected...))
+			s.Where(sql.And(collected...))
 		}
 	}
 }
 
 // OrPredicates returns a new predicate for joining multiple generated predicates with OR between them.
-func OrPredicates[P ~func(*Selector)](predicates ...P) func(*Selector) {
-	return func(s *Selector) {
+func OrPredicates[P ~func(*sql.Selector)](predicates ...P) func(*sql.Selector) {
+	return func(s *sql.Selector) {
 		s.CollectPredicates()
 		for _, p := range predicates {
 			p(s)
@@ -224,14 +225,14 @@ func OrPredicates[P ~func(*Selector)](predicates ...P) func(*Selector) {
 		case 1:
 			s.Where(collected[0])
 		default:
-			s.Where(Or(collected...))
+			s.Where(sql.Or(collected...))
 		}
 	}
 }
 
 // NotPredicates wraps the generated predicates with NOT. For example, NOT(P), NOT((P1 AND P2)).
-func NotPredicates[P ~func(*Selector)](predicates ...P) func(*Selector) {
-	return func(s *Selector) {
+func NotPredicates[P ~func(*sql.Selector)](predicates ...P) func(*sql.Selector) {
+	return func(s *sql.Selector) {
 		s.CollectPredicates()
 		for _, p := range predicates {
 			p(s)
@@ -241,9 +242,9 @@ func NotPredicates[P ~func(*Selector)](predicates ...P) func(*Selector) {
 		switch len(collected) {
 		case 0:
 		case 1:
-			s.Where(Not(collected[0]))
+			s.Where(sql.Not(collected[0]))
 		default:
-			s.Where(Not(And(collected...)))
+			s.Where(sql.Not(sql.And(collected...)))
 		}
 	}
 }
@@ -277,7 +278,7 @@ type (
 	// OrderExprTerm represents an ordering by an expression.
 	OrderExprTerm struct {
 		OrderTermOptions
-		Expr func(*Selector) Querier // Expression.
+		Expr func(*sql.Selector) sql.Querier // Expression.
 	}
 	// OrderTerm represents an ordering by a term.
 	OrderTerm interface {
@@ -379,23 +380,23 @@ func orderByAgg(fn, field string, opts ...OrderTermOption) *OrderExprTerm {
 				opts...,
 			)...,
 		),
-		Expr: func(s *Selector) Querier {
+		Expr: func(s *sql.Selector) sql.Querier {
 			var c string
 			switch {
-			case field == "*", isFunc(field):
+			case field == "*", sql.IsFunc(field):
 				c = field
 			default:
 				c = s.C(field)
 			}
-			return Raw(fmt.Sprintf("%s(%s)", fn, c))
+			return sql.Raw(fmt.Sprintf("%s(%s)", fn, c))
 		},
 	}
 }
 
 // OrderByRand returns a term to natively order by a random value.
-func OrderByRand() func(*Selector) {
-	return func(s *Selector) {
-		s.OrderExprFunc(func(b *Builder) {
+func OrderByRand() func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.OrderExprFunc(func(b *sql.Builder) {
 			switch s.Dialect() {
 			case dialect.MySQL:
 				b.WriteString("RAND()")
@@ -408,9 +409,9 @@ func OrderByRand() func(*Selector) {
 
 // ToFunc returns a function that sets the ordering on the given selector.
 // This is used by the generated code.
-func (f *OrderFieldTerm) ToFunc() func(*Selector) {
-	return func(s *Selector) {
-		s.OrderExprFunc(func(b *Builder) {
+func (f *OrderFieldTerm) ToFunc() func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.OrderExprFunc(func(b *sql.Builder) {
 			b.WriteString(s.C(f.Field))
 			if f.Desc {
 				b.WriteString(" DESC")

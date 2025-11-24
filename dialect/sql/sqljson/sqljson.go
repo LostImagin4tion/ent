@@ -12,7 +12,7 @@ import (
 	"unicode"
 
 	"entgo.io/ent/dialect"
-	"entgo.io/ent/dialect/sql"
+	sql "entgo.io/ent/dialect/sql/builder"
 )
 
 // HasKey return a predicate for checking that a JSON key

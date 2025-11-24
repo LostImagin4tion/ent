@@ -53,12 +53,12 @@ func (b *Builder) Quote(ident string) string {
 func (b *Builder) Ident(s string) *Builder {
 	switch {
 	case len(s) == 0:
-	case !strings.HasSuffix(s, "*") && !b.isIdent(s) && !isFunc(s) && !isModifier(s) && !isAlias(s):
+	case !strings.HasSuffix(s, "*") && !b.isIdent(s) && !IsFunc(s) && !isModifier(s) && !isAlias(s):
 		if b.qualifier != "" {
 			b.WriteString(b.Quote(b.qualifier)).WriteByte('.')
 		}
 		b.WriteString(b.Quote(s))
-	case (isFunc(s) || isModifier(s) || isAlias(s)) && b.postgres():
+	case (IsFunc(s) || isModifier(s) || isAlias(s)) && b.postgres():
 		// Modifiers and aggregation functions that
 		// were called without dialect information.
 		b.WriteString(strings.ReplaceAll(s, "`", `"`))

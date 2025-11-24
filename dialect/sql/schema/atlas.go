@@ -23,6 +23,7 @@ import (
 	"ariga.io/atlas/sql/sqltool"
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/builder"
 	"entgo.io/ent/schema/field"
 )
 
@@ -811,8 +812,11 @@ func (a *Atlas) loadTypes(ctx context.Context, conn dialect.ExecQuerier) ([]stri
 		return nil, errTypeTableNotFound
 	}
 	rows := &entsql.Rows{}
-	query, args := entsql.Dialect(a.dialect).
-		Select("type").From(entsql.Table(TypeTable)).OrderBy(entsql.Asc("id")).Query()
+	query, args := builder.Dialect(a.dialect).
+		Select("type").
+		From(builder.Table(TypeTable)).
+		OrderBy(builder.Asc("id")).
+		Query()
 	if err := conn.Query(ctx, query, args, rows); err != nil {
 		return nil, fmt.Errorf("query types table: %w", err)
 	}

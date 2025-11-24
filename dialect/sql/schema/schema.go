@@ -20,6 +20,7 @@ import (
 	entdialect "entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/builder"
 	"entgo.io/ent/schema/field"
 )
 
@@ -650,16 +651,16 @@ func DDL(ctx context.Context, args DDLArgs) (string, error) {
 		return "", err
 	}
 	for _, v := range vs {
-		q, _ := sql.Dialect(args.Dialect).
+		q, _ := builder.Dialect(args.Dialect).
 			CreateView(v.Name).
 			Schema(v.Schema.Name).
-			Columns(func(cols []*schema.Column) (bs []*sql.ColumnBuilder) {
+			Columns(func(cols []*schema.Column) (bs []*builder.ColumnBuilder) {
 				for _, c := range cols {
-					bs = append(bs, sql.Dialect(args.Dialect).Column(c.Name).Type(c.Type.Raw))
+					bs = append(bs, builder.Dialect(args.Dialect).Column(c.Name).Type(c.Type.Raw))
 				}
 				return
 			}(v.Columns)...).
-			As(sql.Raw(v.Def)).
+			As(builder.Raw(v.Def)).
 			Query()
 		p.Changes = append(p.Changes, &migrate.Change{
 			Cmd:     q,

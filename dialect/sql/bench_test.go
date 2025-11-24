@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"entgo.io/ent/dialect"
+	sql "entgo.io/ent/dialect/sql/builder"
 )
 
 func BenchmarkInsertBuilder_Default(b *testing.B) {
@@ -15,7 +16,7 @@ func BenchmarkInsertBuilder_Default(b *testing.B) {
 		b.Run(d, func(b *testing.B) {
 			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {
-				Dialect(d).Insert("users").Default().Returning("id").Query()
+				sql.Dialect(d).Insert("users").Default().Returning("id").Query()
 			}
 		})
 	}
@@ -26,7 +27,7 @@ func BenchmarkInsertBuilder_Small(b *testing.B) {
 		b.Run(d, func(b *testing.B) {
 			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {
-				Dialect(d).Insert("users").
+				sql.Dialect(d).Insert("users").
 					Columns("id", "age", "first_name", "last_name", "nickname", "spouse_id", "created_at", "updated_at").
 					Values(1, 30, "Ariel", "Mashraki", "a8m", 2, "2009-11-10 23:00:00", "2009-11-10 23:00:00").
 					Returning("id").

@@ -15,6 +15,7 @@ import (
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/builder"
 	"entgo.io/ent/schema/field"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -299,7 +300,7 @@ func TestSetNeighbors(t *testing.T) {
 		{
 			name: "O2M/2types",
 			input: NewStep(
-				From("users", "id", sql.Select().From(sql.Table("users")).Where(sql.EQ("name", "a8m"))),
+				From("users", "id", builder.Select().From(builder.Table("users")).Where(builder.EQ("name", "a8m"))),
 				To("pets", "id"),
 				Edge(O2M, false, "users", "owner_id"),
 			),
@@ -309,7 +310,7 @@ func TestSetNeighbors(t *testing.T) {
 		{
 			name: "M2O/2types",
 			input: NewStep(
-				From("pets", "id", sql.Select().From(sql.Table("pets")).Where(sql.EQ("name", "pedro"))),
+				From("pets", "id", builder.Select().From(builder.Table("pets")).Where(builder.EQ("name", "pedro"))),
 				To("users", "id"),
 				Edge(M2O, true, "pets", "owner_id"),
 			),
@@ -319,7 +320,7 @@ func TestSetNeighbors(t *testing.T) {
 		{
 			name: "M2M/2types",
 			input: NewStep(
-				From("users", "id", sql.Select().From(sql.Table("users")).Where(sql.EQ("name", "a8m"))),
+				From("users", "id", builder.Select().From(builder.Table("users")).Where(builder.EQ("name", "a8m"))),
 				To("groups", "id"),
 				Edge(M2M, false, "user_groups", "user_id", "group_id"),
 			),
@@ -338,7 +339,7 @@ JOIN
 		{
 			name: "M2M/2types/inverse",
 			input: NewStep(
-				From("groups", "id", sql.Select().From(sql.Table("groups")).Where(sql.EQ("name", "GitHub"))),
+				From("groups", "id", builder.Select().From(builder.Table("groups")).Where(builder.EQ("name", "GitHub"))),
 				To("users", "id"),
 				Edge(M2M, true, "user_groups", "user_id", "group_id"),
 			),
@@ -358,7 +359,7 @@ JOIN
 			name: "schema/O2M/2types",
 			input: func() *Step {
 				step := NewStep(
-					From("users", "id", sql.Select().From(sql.Table("users").Schema("s2")).Where(sql.EQ("name", "a8m"))),
+					From("users", "id", builder.Select().From(builder.Table("users").Schema("s2")).Where(builder.EQ("name", "a8m"))),
 					To("pets", "id"),
 					Edge(O2M, false, "users", "owner_id"),
 				)
@@ -372,7 +373,7 @@ JOIN
 			name: "schema/M2O/2types",
 			input: func() *Step {
 				step := NewStep(
-					From("pets", "id", sql.Select().From(sql.Table("pets").Schema("s2")).Where(sql.EQ("name", "pedro"))),
+					From("pets", "id", builder.Select().From(builder.Table("pets").Schema("s2")).Where(builder.EQ("name", "pedro"))),
 					To("users", "id"),
 					Edge(M2O, true, "pets", "owner_id"),
 				)
@@ -386,7 +387,7 @@ JOIN
 			name: "schema/M2M/2types",
 			input: func() *Step {
 				step := NewStep(
-					From("users", "id", sql.Select().From(sql.Table("users").Schema("s2")).Where(sql.EQ("name", "a8m"))),
+					From("users", "id", builder.Select().From(builder.Table("users").Schema("s2")).Where(builder.EQ("name", "a8m"))),
 					To("groups", "id"),
 					Edge(M2M, false, "user_groups", "user_id", "group_id"),
 				)
@@ -410,7 +411,7 @@ JOIN
 			name: "schema/M2M/2types/inverse",
 			input: func() *Step {
 				step := NewStep(
-					From("groups", "id", sql.Select().From(sql.Table("groups").Schema("s2")).Where(sql.EQ("name", "GitHub"))),
+					From("groups", "id", builder.Select().From(builder.Table("groups").Schema("s2")).Where(builder.EQ("name", "GitHub"))),
 					To("users", "id"),
 					Edge(M2M, true, "user_groups", "user_id", "group_id"),
 				)
@@ -446,7 +447,7 @@ func TestHasNeighbors(t *testing.T) {
 	tests := []struct {
 		name      string
 		step      *Step
-		selector  *sql.Selector
+		selector  *builder.Selector
 		wantQuery string
 	}{
 		{
@@ -459,7 +460,7 @@ func TestHasNeighbors(t *testing.T) {
 				To("nodes", "id"),
 				Edge(O2O, false, "nodes", "prev_id"),
 			),
-			selector:  sql.Select("*").From(sql.Table("nodes")),
+			selector:  builder.Select("*").From(builder.Table("nodes")),
 			wantQuery: "SELECT * FROM `nodes` WHERE EXISTS (SELECT `nodes_edge`.`prev_id` FROM `nodes` AS `nodes_edge` WHERE `nodes`.`id` = `nodes_edge`.`prev_id`)",
 		},
 		{
@@ -471,7 +472,7 @@ func TestHasNeighbors(t *testing.T) {
 				To("nodes", "id"),
 				Edge(O2O, true, "nodes", "prev_id"),
 			),
-			selector:  sql.Select("*").From(sql.Table("nodes")),
+			selector:  builder.Select("*").From(builder.Table("nodes")),
 			wantQuery: "SELECT * FROM `nodes` WHERE `nodes`.`prev_id` IS NOT NULL",
 		},
 		{
@@ -481,7 +482,7 @@ func TestHasNeighbors(t *testing.T) {
 				To("pets", "id"),
 				Edge(O2M, false, "pets", "owner_id"),
 			),
-			selector:  sql.Select("*").From(sql.Table("users")),
+			selector:  builder.Select("*").From(builder.Table("users")),
 			wantQuery: "SELECT * FROM `users` WHERE EXISTS (SELECT `pets`.`owner_id` FROM `pets` WHERE `users`.`id` = `pets`.`owner_id`)",
 		},
 		{
@@ -491,7 +492,7 @@ func TestHasNeighbors(t *testing.T) {
 				To("users", "id"),
 				Edge(M2O, true, "pets", "owner_id"),
 			),
-			selector:  sql.Select("*").From(sql.Table("pets")),
+			selector:  builder.Select("*").From(builder.Table("pets")),
 			wantQuery: "SELECT * FROM `pets` WHERE `pets`.`owner_id` IS NOT NULL",
 		},
 		{
@@ -501,7 +502,7 @@ func TestHasNeighbors(t *testing.T) {
 				To("groups", "id"),
 				Edge(M2M, false, "user_groups", "user_id", "group_id"),
 			),
-			selector:  sql.Select("*").From(sql.Table("users")),
+			selector:  builder.Select("*").From(builder.Table("users")),
 			wantQuery: "SELECT * FROM `users` WHERE `users`.`id` IN (SELECT `user_groups`.`user_id` FROM `user_groups`)",
 		},
 		{
@@ -511,7 +512,7 @@ func TestHasNeighbors(t *testing.T) {
 				To("groups", "id"),
 				Edge(M2M, true, "group_users", "group_id", "user_id"),
 			),
-			selector:  sql.Select("*").From(sql.Table("users")),
+			selector:  builder.Select("*").From(builder.Table("users")),
 			wantQuery: "SELECT * FROM `users` WHERE `users`.`id` IN (SELECT `group_users`.`user_id` FROM `group_users`)",
 		},
 		{
@@ -525,7 +526,7 @@ func TestHasNeighbors(t *testing.T) {
 				step.Edge.Schema = "s1"
 				return step
 			}(),
-			selector:  sql.Select("*").From(sql.Table("nodes").Schema("s1")),
+			selector:  builder.Select("*").From(builder.Table("nodes").Schema("s1")),
 			wantQuery: "SELECT * FROM `s1`.`nodes` WHERE EXISTS (SELECT `nodes_edge`.`prev_id` FROM `s1`.`nodes` AS `nodes_edge` WHERE `s1`.`nodes`.`id` = `nodes_edge`.`prev_id`)",
 		},
 		{
@@ -537,7 +538,7 @@ func TestHasNeighbors(t *testing.T) {
 				To("nodes", "id"),
 				Edge(O2O, true, "nodes", "prev_id"),
 			),
-			selector:  sql.Select("*").From(sql.Table("nodes").Schema("s1")),
+			selector:  builder.Select("*").From(builder.Table("nodes").Schema("s1")),
 			wantQuery: "SELECT * FROM `s1`.`nodes` WHERE `s1`.`nodes`.`prev_id` IS NOT NULL",
 		},
 		{
@@ -551,7 +552,7 @@ func TestHasNeighbors(t *testing.T) {
 				step.Edge.Schema = "s2"
 				return step
 			}(),
-			selector:  sql.Select("*").From(sql.Table("users").Schema("s1")),
+			selector:  builder.Select("*").From(builder.Table("users").Schema("s1")),
 			wantQuery: "SELECT * FROM `s1`.`users` WHERE EXISTS (SELECT `s2`.`pets`.`owner_id` FROM `s2`.`pets` WHERE `s1`.`users`.`id` = `s2`.`pets`.`owner_id`)",
 		},
 		{
@@ -561,7 +562,7 @@ func TestHasNeighbors(t *testing.T) {
 				To("users", "id"),
 				Edge(M2O, true, "pets", "owner_id"),
 			),
-			selector:  sql.Select("*").From(sql.Table("pets").Schema("s1")),
+			selector:  builder.Select("*").From(builder.Table("pets").Schema("s1")),
 			wantQuery: "SELECT * FROM `s1`.`pets` WHERE `s1`.`pets`.`owner_id` IS NOT NULL",
 		},
 		{
@@ -575,7 +576,7 @@ func TestHasNeighbors(t *testing.T) {
 				step.Edge.Schema = "s2"
 				return step
 			}(),
-			selector:  sql.Select("*").From(sql.Table("users").Schema("s1")),
+			selector:  builder.Select("*").From(builder.Table("users").Schema("s1")),
 			wantQuery: "SELECT * FROM `s1`.`users` WHERE `s1`.`users`.`id` IN (SELECT `s2`.`user_groups`.`user_id` FROM `s2`.`user_groups`)",
 		},
 		{
@@ -589,7 +590,7 @@ func TestHasNeighbors(t *testing.T) {
 				step.Edge.Schema = "s2"
 				return step
 			}(),
-			selector:  sql.Select("*").From(sql.Table("users").Schema("s1")),
+			selector:  builder.Select("*").From(builder.Table("users").Schema("s1")),
 			wantQuery: "SELECT * FROM `s1`.`users` WHERE `s1`.`users`.`id` IN (SELECT `s2`.`group_users`.`user_id` FROM `s2`.`group_users`)",
 		},
 		{
@@ -599,7 +600,7 @@ func TestHasNeighbors(t *testing.T) {
 				To("pets", "id"),
 				Edge(O2M, false, "pets", "owner_id"),
 			),
-			selector:  sql.Select("*").From(sql.Select("*").From(sql.Table("users")).As("users")).As("users"),
+			selector:  builder.Select("*").From(builder.Select("*").From(builder.Table("users")).As("users")).As("users"),
 			wantQuery: "SELECT * FROM (SELECT * FROM `users`) AS `users` WHERE EXISTS (SELECT `pets`.`owner_id` FROM `pets` WHERE `users`.`id` = `pets`.`owner_id`)",
 		},
 		{
@@ -609,7 +610,7 @@ func TestHasNeighbors(t *testing.T) {
 				To("users", "id"),
 				Edge(M2O, true, "pets", "owner_id"),
 			),
-			selector:  sql.Select("*").From(sql.Select("*").From(sql.Table("pets")).As("pets")).As("pets"),
+			selector:  builder.Select("*").From(builder.Select("*").From(builder.Table("pets")).As("pets")).As("pets"),
 			wantQuery: "SELECT * FROM (SELECT * FROM `pets`) AS `pets` WHERE `pets`.`owner_id` IS NOT NULL",
 		},
 		{
@@ -619,13 +620,13 @@ func TestHasNeighbors(t *testing.T) {
 				To("groups", "id"),
 				Edge(M2M, false, "user_groups", "user_id", "group_id"),
 			),
-			selector:  sql.Select("*").From(sql.Select("*").From(sql.Table("users")).As("users")).As("users"),
+			selector:  builder.Select("*").From(builder.Select("*").From(builder.Table("users")).As("users")).As("users"),
 			wantQuery: "SELECT * FROM (SELECT * FROM `users`) AS `users` WHERE `users`.`id` IN (SELECT `user_groups`.`user_id` FROM `user_groups`)",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			for _, s := range []*sql.Selector{tt.selector, tt.selector.Clone()} {
+			for _, s := range []*builder.Selector{tt.selector, tt.selector.Clone()} {
 				HasNeighbors(s, tt.step)
 				query, args := s.Query()
 				require.Equal(t, tt.wantQuery, query)
@@ -639,8 +640,8 @@ func TestHasNeighborsWith(t *testing.T) {
 	tests := []struct {
 		name      string
 		step      *Step
-		selector  *sql.Selector
-		predicate func(*sql.Selector)
+		selector  *builder.Selector
+		predicate func(*builder.Selector)
 		wantQuery string
 		wantArgs  []any
 	}{
@@ -651,9 +652,9 @@ func TestHasNeighborsWith(t *testing.T) {
 				To("cards", "id"),
 				Edge(O2O, false, "cards", "owner_id"),
 			),
-			selector: sql.Dialect("postgres").Select("*").From(sql.Table("users")),
-			predicate: func(s *sql.Selector) {
-				s.Where(sql.EQ("expired", false))
+			selector: builder.Dialect("postgres").Select("*").From(builder.Table("users")),
+			predicate: func(s *builder.Selector) {
+				s.Where(builder.EQ("expired", false))
 			},
 			wantQuery: `SELECT * FROM "users" WHERE EXISTS (SELECT "cards"."owner_id" FROM "cards" WHERE "users"."id" = "cards"."owner_id" AND NOT "expired")`,
 		},
@@ -664,9 +665,9 @@ func TestHasNeighborsWith(t *testing.T) {
 				To("users", "id"),
 				Edge(O2O, true, "cards", "owner_id"),
 			),
-			selector: sql.Dialect("postgres").Select("*").From(sql.Table("cards")),
-			predicate: func(s *sql.Selector) {
-				s.Where(sql.EQ("name", "a8m"))
+			selector: builder.Dialect("postgres").Select("*").From(builder.Table("cards")),
+			predicate: func(s *builder.Selector) {
+				s.Where(builder.EQ("name", "a8m"))
 			},
 			wantQuery: `SELECT * FROM "cards" WHERE EXISTS (SELECT "users"."id" FROM "users" WHERE "cards"."owner_id" = "users"."id" AND "name" = $1)`,
 			wantArgs:  []any{"a8m"},
@@ -678,11 +679,11 @@ func TestHasNeighborsWith(t *testing.T) {
 				To("pets", "id"),
 				Edge(O2M, false, "pets", "owner_id"),
 			),
-			selector: sql.Dialect("postgres").Select("*").
-				From(sql.Table("users")).
-				Where(sql.EQ("last_name", "mashraki")),
-			predicate: func(s *sql.Selector) {
-				s.Where(sql.EQ("name", "pedro"))
+			selector: builder.Dialect("postgres").Select("*").
+				From(builder.Table("users")).
+				Where(builder.EQ("last_name", "mashraki")),
+			predicate: func(s *builder.Selector) {
+				s.Where(builder.EQ("name", "pedro"))
 			},
 			wantQuery: `SELECT * FROM "users" WHERE "last_name" = $1 AND EXISTS (SELECT "pets"."owner_id" FROM "pets" WHERE "users"."id" = "pets"."owner_id" AND "name" = $2)`,
 			wantArgs:  []any{"mashraki", "pedro"},
@@ -694,11 +695,11 @@ func TestHasNeighborsWith(t *testing.T) {
 				To("users", "id"),
 				Edge(M2O, true, "pets", "owner_id"),
 			),
-			selector: sql.Dialect("postgres").Select("*").
-				From(sql.Table("pets")).
-				Where(sql.EQ("name", "pedro")),
-			predicate: func(s *sql.Selector) {
-				s.Where(sql.EQ("last_name", "mashraki"))
+			selector: builder.Dialect("postgres").Select("*").
+				From(builder.Table("pets")).
+				Where(builder.EQ("name", "pedro")),
+			predicate: func(s *builder.Selector) {
+				s.Where(builder.EQ("last_name", "mashraki"))
 			},
 			wantQuery: `SELECT * FROM "pets" WHERE "name" = $1 AND EXISTS (SELECT "users"."id" FROM "users" WHERE "pets"."owner_id" = "users"."id" AND "last_name" = $2)`,
 			wantArgs:  []any{"pedro", "mashraki"},
@@ -710,9 +711,9 @@ func TestHasNeighborsWith(t *testing.T) {
 				To("groups", "id"),
 				Edge(M2M, false, "user_groups", "user_id", "group_id"),
 			),
-			selector: sql.Dialect("postgres").Select("*").From(sql.Table("users")),
-			predicate: func(s *sql.Selector) {
-				s.Where(sql.EQ("name", "GitHub"))
+			selector: builder.Dialect("postgres").Select("*").From(builder.Table("users")),
+			predicate: func(s *builder.Selector) {
+				s.Where(builder.EQ("name", "GitHub"))
 			},
 			wantQuery: `
 SELECT *
@@ -730,9 +731,9 @@ WHERE "users"."id" IN
 				To("users", "id"),
 				Edge(M2M, true, "user_groups", "user_id", "group_id"),
 			),
-			selector: sql.Dialect("postgres").Select("*").From(sql.Table("groups")),
-			predicate: func(s *sql.Selector) {
-				s.Where(sql.EQ("name", "a8m"))
+			selector: builder.Dialect("postgres").Select("*").From(builder.Table("groups")),
+			predicate: func(s *builder.Selector) {
+				s.Where(builder.EQ("name", "a8m"))
 			},
 			wantQuery: `
 SELECT *
@@ -750,9 +751,9 @@ WHERE "groups"."id" IN
 				To("users", "id"),
 				Edge(M2M, true, "user_groups", "user_id", "group_id"),
 			),
-			selector: sql.Dialect("postgres").Select("*").From(sql.Table("groups")),
-			predicate: func(s *sql.Selector) {
-				s.Where(sql.And(sql.NotNull("name"), sql.EQ("name", "a8m")))
+			selector: builder.Dialect("postgres").Select("*").From(builder.Table("groups")),
+			predicate: func(s *builder.Selector) {
+				s.Where(builder.And(builder.NotNull("name"), builder.EQ("name", "a8m")))
 			},
 			wantQuery: `
 SELECT *
@@ -774,9 +775,9 @@ WHERE "groups"."id" IN
 				step.Edge.Schema = "s2"
 				return step
 			}(),
-			selector: sql.Dialect("postgres").Select("*").From(sql.Table("users").Schema("s1")),
-			predicate: func(s *sql.Selector) {
-				s.Where(sql.EQ("expired", false))
+			selector: builder.Dialect("postgres").Select("*").From(builder.Table("users").Schema("s1")),
+			predicate: func(s *builder.Selector) {
+				s.Where(builder.EQ("expired", false))
 			},
 			wantQuery: `SELECT * FROM "s1"."users" WHERE EXISTS (SELECT "s2"."cards"."owner_id" FROM "s2"."cards" WHERE "s1"."users"."id" = "s2"."cards"."owner_id" AND NOT "expired")`,
 		},
@@ -791,11 +792,11 @@ WHERE "groups"."id" IN
 				step.Edge.Schema = "s2"
 				return step
 			}(),
-			selector: sql.Dialect("postgres").Select("*").
-				From(sql.Table("users").Schema("s1")).
-				Where(sql.EQ("last_name", "mashraki")),
-			predicate: func(s *sql.Selector) {
-				s.Where(sql.EQ("name", "pedro"))
+			selector: builder.Dialect("postgres").Select("*").
+				From(builder.Table("users").Schema("s1")).
+				Where(builder.EQ("last_name", "mashraki")),
+			predicate: func(s *builder.Selector) {
+				s.Where(builder.EQ("name", "pedro"))
 			},
 			wantQuery: `SELECT * FROM "s1"."users" WHERE "last_name" = $1 AND EXISTS (SELECT "s2"."pets"."owner_id" FROM "s2"."pets" WHERE "s1"."users"."id" = "s2"."pets"."owner_id" AND "name" = $2)`,
 			wantArgs:  []any{"mashraki", "pedro"},
@@ -812,9 +813,9 @@ WHERE "groups"."id" IN
 				step.Edge.Schema = "s2"
 				return step
 			}(),
-			selector: sql.Dialect("postgres").Select("*").From(sql.Table("users").Schema("s1")),
-			predicate: func(s *sql.Selector) {
-				s.Where(sql.EQ("name", "GitHub"))
+			selector: builder.Dialect("postgres").Select("*").From(builder.Table("users").Schema("s1")),
+			predicate: func(s *builder.Selector) {
+				s.Where(builder.EQ("name", "GitHub"))
 			},
 			wantQuery: `
 SELECT *
@@ -832,11 +833,11 @@ WHERE "s1"."users"."id" IN
 				To("pets", "id"),
 				Edge(O2M, false, "pets", "owner_id"),
 			),
-			selector: sql.Dialect("postgres").Select("*").
-				From(sql.Select("*").From(sql.Table("users")).As("users")).
-				Where(sql.EQ("last_name", "mashraki")).As("users"),
-			predicate: func(s *sql.Selector) {
-				s.Where(sql.EQ("name", "pedro"))
+			selector: builder.Dialect("postgres").Select("*").
+				From(builder.Select("*").From(builder.Table("users")).As("users")).
+				Where(builder.EQ("last_name", "mashraki")).As("users"),
+			predicate: func(s *builder.Selector) {
+				s.Where(builder.EQ("name", "pedro"))
 			},
 			wantQuery: `SELECT * FROM (SELECT * FROM "users") AS "users" WHERE "last_name" = $1 AND EXISTS (SELECT "pets"."owner_id" FROM "pets" WHERE "users"."id" = "pets"."owner_id" AND "name" = $2)`,
 			wantArgs:  []any{"mashraki", "pedro"},
@@ -848,11 +849,11 @@ WHERE "s1"."users"."id" IN
 				To("users", "id"),
 				Edge(M2O, true, "pets", "owner_id"),
 			),
-			selector: sql.Dialect("postgres").Select("*").
-				From(sql.Select("*").From(sql.Table("pets")).As("pets")).
-				Where(sql.EQ("name", "pedro")).As("pets"),
-			predicate: func(s *sql.Selector) {
-				s.Where(sql.EQ("last_name", "mashraki"))
+			selector: builder.Dialect("postgres").Select("*").
+				From(builder.Select("*").From(builder.Table("pets")).As("pets")).
+				Where(builder.EQ("name", "pedro")).As("pets"),
+			predicate: func(s *builder.Selector) {
+				s.Where(builder.EQ("last_name", "mashraki"))
 			},
 			wantQuery: `SELECT * FROM (SELECT * FROM "pets") AS "pets" WHERE "name" = $1 AND EXISTS (SELECT "users"."id" FROM "users" WHERE "pets"."owner_id" = "users"."id" AND "last_name" = $2)`,
 			wantArgs:  []any{"pedro", "mashraki"},
@@ -864,9 +865,9 @@ WHERE "s1"."users"."id" IN
 				To("groups", "id"),
 				Edge(M2M, false, "user_groups", "user_id", "group_id"),
 			),
-			selector: sql.Dialect("postgres").Select("*").From(sql.Select("*").From(sql.Table("users")).As("users")).As("users"),
-			predicate: func(s *sql.Selector) {
-				s.Where(sql.EQ("name", "GitHub"))
+			selector: builder.Dialect("postgres").Select("*").From(builder.Select("*").From(builder.Table("users")).As("users")).As("users"),
+			predicate: func(s *builder.Selector) {
+				s.Where(builder.EQ("name", "GitHub"))
 			},
 			wantQuery: `SELECT * FROM (SELECT * FROM "users") AS "users" WHERE "users"."id" IN (SELECT "user_groups"."user_id" FROM "user_groups" JOIN "groups" AS "t1" ON "user_groups"."group_id" = "t1"."id" WHERE "name" = $1)`,
 			wantArgs:  []any{"GitHub"},
@@ -874,7 +875,7 @@ WHERE "s1"."users"."id" IN
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			for _, s := range []*sql.Selector{tt.selector, tt.selector.Clone()} {
+			for _, s := range []*builder.Selector{tt.selector, tt.selector.Clone()} {
 				HasNeighborsWith(s, tt.step, tt.predicate)
 				query, args := s.Query()
 				tt.wantQuery = strings.Join(strings.Fields(tt.wantQuery), " ")
@@ -890,9 +891,9 @@ func TestHasNeighborsWithContext(t *testing.T) {
 	ctx := context.WithValue(context.Background(), key("mykey"), "myval")
 	for _, rel := range [...]Rel{M2M, O2M, O2O} {
 		t.Run(rel.String(), func(t *testing.T) {
-			sel := sql.Dialect(dialect.Postgres).
+			sel := builder.Dialect(dialect.Postgres).
 				Select("*").
-				From(sql.Table("users")).
+				From(builder.Table("users")).
 				WithContext(ctx)
 			step := NewStep(
 				From("users", "id"),
@@ -900,7 +901,7 @@ func TestHasNeighborsWithContext(t *testing.T) {
 				Edge(rel, false, "user_groups", "user_id", "group_id"),
 			)
 			var called bool
-			pred := func(s *sql.Selector) {
+			pred := func(s *builder.Selector) {
 				called = true
 				got := s.Context().Value(key("mykey")).(string)
 				require.Equal(t, "myval", got)
@@ -912,7 +913,7 @@ func TestHasNeighborsWithContext(t *testing.T) {
 }
 
 func TestOrderByNeighborsCount(t *testing.T) {
-	build := sql.Dialect(dialect.Postgres)
+	build := builder.Dialect(dialect.Postgres)
 	t1 := build.Table("users")
 	s := build.Select(t1.C("name")).
 		From(t1)
@@ -988,7 +989,7 @@ func TestOrderByNeighborsCount(t *testing.T) {
 }
 
 func TestOrderByNeighborTerms(t *testing.T) {
-	build := sql.Dialect(dialect.Postgres)
+	build := builder.Dialect(dialect.Postgres)
 	t1 := build.Table("users")
 	s := build.Select(t1.C("name")).
 		From(t1)
@@ -1126,8 +1127,8 @@ func TestCreateNode(t *testing.T) {
 					{Column: "age", Type: field.TypeInt, Value: 30},
 					{Column: "name", Type: field.TypeString, Value: "a8m"},
 				},
-				OnConflict: []sql.ConflictOption{
-					sql.ResolveWithNewValues(),
+				OnConflict: []builder.ConflictOption{
+					builder.ResolveWithNewValues(),
 				},
 			},
 			expect: func(m sqlmock.Sqlmock) {
@@ -1506,8 +1507,8 @@ func TestBatchCreate(t *testing.T) {
 						},
 					},
 				},
-				OnConflict: []sql.ConflictOption{
-					sql.ResolveWithIgnore(),
+				OnConflict: []builder.ConflictOption{
+					builder.ResolveWithIgnore(),
 				},
 			},
 			expect: func(m sqlmock.Sqlmock) {
@@ -1762,9 +1763,9 @@ func TestUpdateNode(t *testing.T) {
 					Columns: []string{"id", "name", "age"},
 					ID:      &FieldSpec{Column: "id", Type: field.TypeInt, Value: 1},
 				},
-				Modifiers: []func(*sql.UpdateBuilder){
-					func(u *sql.UpdateBuilder) {
-						u.Set("name", sql.Expr(sql.Lower("name")))
+				Modifiers: []func(*builder.UpdateBuilder){
+					func(u *builder.UpdateBuilder) {
+						u.Set("name", builder.Expr(builder.Lower("name")))
 					},
 				},
 			},
@@ -1789,8 +1790,8 @@ func TestUpdateNode(t *testing.T) {
 					Columns: []string{"id", "name", "age"},
 					ID:      &FieldSpec{Column: "id", Type: field.TypeInt, Value: 1},
 				},
-				Predicate: func(s *sql.Selector) {
-					s.Where(sql.EQ("deleted", false))
+				Predicate: func(s *builder.Selector) {
+					s.Where(builder.EQ("deleted", false))
 				},
 				Fields: FieldMut{
 					Add: []*FieldSpec{
@@ -1825,8 +1826,8 @@ func TestUpdateNode(t *testing.T) {
 					Columns: []string{"id", "name", "age"},
 					ID:      &FieldSpec{Column: "id", Type: field.TypeInt, Value: 1},
 				},
-				Predicate: func(s *sql.Selector) {
-					s.Where(sql.EQ("deleted", false))
+				Predicate: func(s *builder.Selector) {
+					s.Where(builder.EQ("deleted", false))
 				},
 				Fields: FieldMut{
 					Add: []*FieldSpec{
@@ -2107,8 +2108,8 @@ func TestUpdateNodes(t *testing.T) {
 						{Column: "name", Type: field.TypeString},
 					},
 				},
-				Predicate: func(s *sql.Selector) {
-					s.Where(sql.EQ("name", "a8m"))
+				Predicate: func(s *builder.Selector) {
+					s.Where(builder.EQ("name", "a8m"))
 				},
 			},
 			prepare: func(mock sqlmock.Sqlmock) {
@@ -2126,9 +2127,9 @@ func TestUpdateNodes(t *testing.T) {
 					Table: "users",
 					ID:    &FieldSpec{Column: "id", Type: field.TypeInt},
 				},
-				Modifiers: []func(*sql.UpdateBuilder){
-					func(u *sql.UpdateBuilder) {
-						u.Set("id", sql.Expr("id + 1")).OrderBy("id")
+				Modifiers: []func(*builder.UpdateBuilder){
+					func(u *builder.UpdateBuilder) {
+						u.Set("id", builder.Expr("id + 1")).OrderBy("id")
 					},
 				},
 			},
@@ -2312,8 +2313,8 @@ func TestUpdateNodes(t *testing.T) {
 					Table:       "users",
 					CompositeID: []*FieldSpec{{Column: "user_id", Type: field.TypeInt}, {Column: "group_id", Type: field.TypeInt}},
 				},
-				Predicate: func(s *sql.Selector) {
-					s.Where(sql.EQ("version", 1))
+				Predicate: func(s *builder.Selector) {
+					s.Where(builder.EQ("version", 1))
 				},
 				Fields: FieldMut{
 					Add: []*FieldSpec{
@@ -2401,14 +2402,14 @@ func TestQueryNodes(t *testing.T) {
 			Limit:  3,
 			Offset: 4,
 			Unique: true,
-			Order: func(s *sql.Selector) {
+			Order: func(s *builder.Selector) {
 				s.OrderBy("id")
 			},
-			Predicate: func(s *sql.Selector) {
-				s.Where(sql.LT("age", 40))
+			Predicate: func(s *builder.Selector) {
+				s.Where(builder.LT("age", 40))
 			},
-			Modifiers: []func(*sql.Selector){
-				func(s *sql.Selector) { s.ForUpdate(sql.WithLockAction(sql.NoWait)) },
+			Modifiers: []func(*builder.Selector){
+				func(s *builder.Selector) { s.ForUpdate(builder.WithLockAction(builder.NoWait)) },
 			},
 			ScanValues: func(columns []string) ([]any, error) {
 				u := &user{}
@@ -2462,11 +2463,11 @@ func TestQueryNodesSchema(t *testing.T) {
 			Limit:  3,
 			Offset: 4,
 			Unique: true,
-			Order: func(s *sql.Selector) {
+			Order: func(s *builder.Selector) {
 				s.OrderBy("id")
 			},
-			Predicate: func(s *sql.Selector) {
-				s.Where(sql.LT("age", 40))
+			Predicate: func(s *builder.Selector) {
+				s.Where(builder.LT("age", 40))
 			},
 			ScanValues: func(columns []string) ([]any, error) {
 				u := &user{}
@@ -2504,8 +2505,8 @@ func TestQueryEdges(t *testing.T) {
 				Table:   "user_groups",
 				Columns: []string{"user_id", "group_id"},
 			},
-			Predicate: func(s *sql.Selector) {
-				s.Where(sql.InValues("user_id", 1, 2, 3))
+			Predicate: func(s *builder.Selector) {
+				s.Where(builder.InValues("user_id", 1, 2, 3))
 			},
 			ScanValues: func() [2]any {
 				return [2]any{&sql.NullInt64{}, &sql.NullInt64{}}
@@ -2542,8 +2543,8 @@ func TestQueryEdgesSchema(t *testing.T) {
 				Schema:  "mydb",
 				Columns: []string{"user_id", "group_id"},
 			},
-			Predicate: func(s *sql.Selector) {
-				s.Where(sql.InValues("user_id", 1, 2, 3))
+			Predicate: func(s *builder.Selector) {
+				s.Where(builder.InValues("user_id", 1, 2, 3))
 			},
 			ScanValues: func() [2]any {
 				return [2]any{&sql.NullInt64{}, &sql.NullInt64{}}
@@ -2686,7 +2687,7 @@ func TestLimitNeighbors(t *testing.T) {
 	t.Run("O2M", func(t *testing.T) {
 		const fk = "author_id"
 		// Authors load their posts.
-		s := sql.Select(fk, "id").From(sql.Table("posts"))
+		s := builder.Select(fk, "id").From(builder.Table("posts"))
 		LimitNeighbors(fk, 2)(s)
 		query, args := s.Query()
 		require.Equal(t,
@@ -2697,9 +2698,9 @@ func TestLimitNeighbors(t *testing.T) {
 	})
 	t.Run("M2M", func(t *testing.T) {
 		const fk = "user_id"
-		edgeT, neighborsT := sql.Table("user_groups"), sql.Table("groups")
-		s := sql.Select(fk, "id", "name").From(neighborsT).Join(edgeT).On(neighborsT.C("id"), edgeT.C("group_id"))
-		LimitNeighbors(fk, 1, sql.ExprFunc(func(b *sql.Builder) { b.Ident("updated_at") }))(s)
+		edgeT, neighborsT := builder.Table("user_groups"), builder.Table("groups")
+		s := builder.Select(fk, "id", "name").From(neighborsT).Join(edgeT).On(neighborsT.C("id"), edgeT.C("group_id"))
+		LimitNeighbors(fk, 1, builder.ExprFunc(func(b *builder.Builder) { b.Ident("updated_at") }))(s)
 		query, args := s.Query()
 		require.Equal(t,
 			"WITH `src_query` AS (SELECT `user_id`, `id`, `name` FROM `groups` JOIN `user_groups` AS `t1` ON `groups`.`id` = `t1`.`group_id`), `limited_query` AS (SELECT *, (ROW_NUMBER() OVER (PARTITION BY `user_id` ORDER BY `updated_at`)) AS `row_number` FROM `src_query`) SELECT `user_id`, `id`, `name` FROM `limited_query` AS `groups` WHERE `groups`.`row_number` <= ?",

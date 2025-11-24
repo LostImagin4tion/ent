@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"entgo.io/ent/dialect"
-	"entgo.io/ent/dialect/sql"
+	sql "entgo.io/ent/dialect/sql/builder"
 	"entgo.io/ent/entql"
 	"entgo.io/ent/schema/field"
 

@@ -13,6 +13,7 @@ import (
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/builder"
 	"entgo.io/ent/schema/field"
 
 	"ariga.io/atlas/sql/migrate"
@@ -60,25 +61,25 @@ func (d *Postgres) init(ctx context.Context) error {
 
 // tableExist checks if a table exists in the database and current schema.
 func (d *Postgres) tableExist(ctx context.Context, conn dialect.ExecQuerier, name string) (bool, error) {
-	query, args := sql.Dialect(dialect.Postgres).
-		Select(sql.Count("*")).From(sql.Table("tables").Schema("information_schema")).
-		Where(sql.And(
+	query, args := builder.Dialect(dialect.Postgres).
+		Select(builder.Count("*")).From(builder.Table("tables").Schema("information_schema")).
+		Where(builder.And(
 			d.matchSchema(),
-			sql.EQ("table_name", name),
+			builder.EQ("table_name", name),
 		)).Query()
 	return exist(ctx, conn, query, args...)
 }
 
 // matchSchema returns the predicate for matching table schema.
-func (d *Postgres) matchSchema(columns ...string) *sql.Predicate {
+func (d *Postgres) matchSchema(columns ...string) *builder.Predicate {
 	column := "table_schema"
 	if len(columns) > 0 {
 		column = columns[0]
 	}
 	if d.schema != "" {
-		return sql.EQ(column, d.schema)
+		return builder.EQ(column, d.schema)
 	}
-	return sql.EQ(column, sql.Raw("CURRENT_SCHEMA()"))
+	return builder.EQ(column, builder.Raw("CURRENT_SCHEMA()"))
 }
 
 // maxCharSize defines the maximum size of limited character types in Postgres (10 MB).
