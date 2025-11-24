@@ -20,7 +20,7 @@ func ({{ $receiver}} *{{ $builder }}) sqlExec(ctx context.Context) (int, error) 
 		{{- end }}
 	{{- end }}
 	if ps := {{ $mutation }}.predicates; len(ps) > 0 {
-		_spec.Predicate = func(selector *sql.Selector) {
+		_spec.Predicate = func(selector *builder.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}

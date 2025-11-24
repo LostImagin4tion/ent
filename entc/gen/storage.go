@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"entgo.io/ent/dialect/gremlin/graph/dsl"
-	sql "entgo.io/ent/dialect/sql/builder"
+	"entgo.io/ent/dialect/sql/builder"
 )
 
 // A SchemaMode defines what type of schema feature a storage driver support.
@@ -53,11 +53,12 @@ var drivers = []*Storage{
 	{
 		Name:      "sql",
 		IdentName: "SQL",
-		Builder:   reflect.TypeOf(&sql.Selector{}),
+		Builder:   reflect.TypeOf(&builder.Selector{}),
 		Dialects:  []string{"dialect.SQLite", "dialect.MySQL", "dialect.Postgres"},
 		Imports: []string{
 			"database/sql/driver",
 			"entgo.io/ent/dialect/sql",
+			"entgo.io/ent/dialect/sql/builder",
 			"entgo.io/ent/dialect/sql/sqlgraph",
 			"entgo.io/ent/dialect/sql/sqljson",
 			"entgo.io/ent/schema/field",

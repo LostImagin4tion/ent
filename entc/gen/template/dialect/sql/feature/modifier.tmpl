@@ -11,11 +11,11 @@ in the LICENSE file in the root directory of this source tree.
 {{/* Template for adding the "modifiers" field to the query builder. */}}
 {{ define "dialect/sql/query/fields/additional/modify" -}}
     {{- if or ($.FeatureEnabled "sql/lock") ($.FeatureEnabled "sql/modifier") }}
-        modifiers []func(*sql.Selector)
+        modifiers []func(*builder.Selector)
     {{- end }}
 {{- end -}}
 
-{{/* Template for adding the "executing" the list of modifiers on the sql.Selector. */}}
+{{/* Template for adding the "executing" the list of modifiers on the builder.Selector. */}}
 {{ define "dialect/sql/query/selector/modify" }}
     {{- if or ($.FeatureEnabled "sql/lock") ($.FeatureEnabled "sql/modifier") }}
         {{- $receiver := $.Scope.Receiver }}
@@ -42,7 +42,7 @@ in the LICENSE file in the root directory of this source tree.
         {{ $receiver := $.Scope.Receiver }}
         {{ $selectBuilder := pascal $.Name | printf "%sSelect" }}
         // Modify adds a query modifier for attaching custom logic to queries.
-        func ({{ $receiver }} *{{ $builder }}) Modify(modifiers ...func(s *sql.Selector)) *{{ $selectBuilder }} {
+        func ({{ $receiver }} *{{ $builder }}) Modify(modifiers ...func(s *builder.Selector)) *{{ $selectBuilder }} {
             {{ $receiver }}.modifiers = append({{ $receiver }}.modifiers, modifiers...)
             return {{ $receiver }}.Select()
         }
@@ -55,7 +55,7 @@ in the LICENSE file in the root directory of this source tree.
         {{ $builder := pascal $.Scope.Builder }}
         {{ $receiver := $.Scope.Receiver }}
         // Modify adds a query modifier for attaching custom logic to queries.
-        func ({{ $receiver }} *{{ $builder }}) Modify(modifiers ...func(s *sql.Selector)) *{{ $builder }} {
+        func ({{ $receiver }} *{{ $builder }}) Modify(modifiers ...func(s *builder.Selector)) *{{ $builder }} {
             {{ $receiver }}.modifiers = append({{ $receiver }}.modifiers, modifiers...)
             return {{ $receiver }}
         }
@@ -65,7 +65,7 @@ in the LICENSE file in the root directory of this source tree.
 {{/* Template for adding the "modifiers" field to the update builder. */}}
 {{ define "dialect/sql/update/fields/additional/modify" -}}
     {{- if $.FeatureEnabled "sql/modifier" }}
-        modifiers []func(*sql.UpdateBuilder)
+        modifiers []func(*builder.UpdateBuilder)
     {{- end }}
 {{- end -}}
 
@@ -76,7 +76,7 @@ in the LICENSE file in the root directory of this source tree.
         {{ $builder := pascal $.Scope.Builder }}
         {{ $receiver := $.Scope.Receiver }}
         // Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
-        func ({{ $receiver }} *{{ $builder }}) Modify(modifiers ...func(u *sql.UpdateBuilder)) *{{ $builder }} {
+        func ({{ $receiver }} *{{ $builder }}) Modify(modifiers ...func(u *builder.UpdateBuilder)) *{{ $builder }} {
             {{ $receiver }}.modifiers = append({{ $receiver }}.modifiers, modifiers...)
             return {{ $receiver }}
         }

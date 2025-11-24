@@ -28,6 +28,7 @@ import (
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/builder"
 	sqlschema "entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/entc/integration/ent"
@@ -341,7 +342,7 @@ func Upsert(t *testing.T, client *ent.Client) {
 		SetAge(30).
 		SetPhone("0000").
 		OnConflict(
-			sql.ConflictColumns(user.FieldPhone),
+			builder.ConflictColumns(user.FieldPhone),
 		).
 		// Update "name" to the value that was set on create ("Mashraki").
 		UpdateName().
@@ -411,7 +412,7 @@ func Upsert(t *testing.T, client *ent.Client) {
 		require.Equal(t, cb.ID, b.ID)
 		require.Equal(t, "world", cb.Text)
 	} else {
-		aid := client.Item.Create().SetID("A").OnConflict(sql.ConflictColumns(item.FieldID)).Ignore().IDX(ctx)
+		aid := client.Item.Create().SetID("A").OnConflict(builder.ConflictColumns(item.FieldID)).Ignore().IDX(ctx)
 		require.Equal(t, a.ID, aid)
 		client.Item.Delete().ExecX(ctx)
 
@@ -448,8 +449,8 @@ func Upsert(t *testing.T, client *ent.Client) {
 		err = client.Card.Create().
 			SetNumber(c1.Number).
 			OnConflict(
-				sql.ConflictColumns(card.FieldNumber),
-				sql.UpdateWhere(sql.NEQ(card.FieldCreateTime, ts)),
+				builder.ConflictColumns(card.FieldNumber),
+				builder.UpdateWhere(builder.NEQ(card.FieldCreateTime, ts)),
 			).
 			UpdateNewValues().
 			Exec(ctx)
@@ -460,8 +461,8 @@ func Upsert(t *testing.T, client *ent.Client) {
 		id = client.Card.Create().
 			SetNumber(c1.Number).
 			OnConflict(
-				sql.ConflictColumns(card.FieldNumber),
-				sql.UpdateWhere(sql.EQ(card.FieldCreateTime, ts)),
+				builder.ConflictColumns(card.FieldNumber),
+				builder.UpdateWhere(builder.EQ(card.FieldCreateTime, ts)),
 			).
 			UpdateNewValues().
 			IDX(ctx)
@@ -650,10 +651,10 @@ func Select(t *testing.T, client *ent.Client) {
 	names = client.Pet.Query().Order(ent.Asc(pet.FieldName)).Select(pet.FieldName).StringsX(ctx)
 	require.Equal([]string{"a", "b", "b", "c"}, names)
 	names = client.Pet.Query().
-		Order(func(s *sql.Selector) {
+		Order(func(s *builder.Selector) {
 			// Join with user table for ordering by owner-name
 			// and pet-name (edge + field ordering).
-			t := sql.Table(user.Table)
+			t := builder.Table(user.Table)
 			s.Join(t).On(s.C(pet.OwnerColumn), t.C(user.FieldID))
 			s.OrderBy(t.C(user.FieldName), s.C(pet.FieldName))
 		}).
@@ -666,16 +667,16 @@ func Select(t *testing.T, client *ent.Client) {
 	require.Len(ps, 4, "support scanning nodes manually")
 
 	lens := client.Pet.Query().
-		Modify(func(s *sql.Selector) {
+		Modify(func(s *builder.Selector) {
 			s.Select("LENGTH(name)")
 		}).
 		IntsX(ctx)
 	require.Equal([]int{1, 1, 1, 1}, lens)
 
 	dlen := client.Pet.Query().
-		Modify(func(s *sql.Selector) {
-			s.SelectExpr(sql.ExprFunc(func(b *sql.Builder) {
-				b.WriteString("LENGTH(name)").WriteOp(sql.OpMul).Arg(2)
+		Modify(func(s *builder.Selector) {
+			s.SelectExpr(builder.ExprFunc(func(b *builder.Builder) {
+				b.WriteString("LENGTH(name)").WriteOp(builder.OpMul).Arg(2)
 			}))
 		}).
 		IntsX(ctx)
@@ -685,7 +686,7 @@ func Select(t *testing.T, client *ent.Client) {
 		pets[i].Update().SetName(pets[i].Name + pets[i].Name).ExecX(ctx)
 	}
 	n := client.Pet.Query().
-		Modify(func(s *sql.Selector) {
+		Modify(func(s *builder.Selector) {
 			s.Select("SUM(LENGTH(name))")
 		}).
 		IntX(ctx)
@@ -700,7 +701,7 @@ func Select(t *testing.T, client *ent.Client) {
 	)
 	client.Pet.Query().
 		Order(ent.Asc(pet.FieldID)).
-		Modify(func(s *sql.Selector) {
+		Modify(func(s *builder.Selector) {
 			s.AppendSelect("LENGTH(name)")
 		}).
 		ScanX(ctx, &p1)
@@ -730,8 +731,8 @@ func Select(t *testing.T, client *ent.Client) {
 	)
 	client.Group.Query().
 		Order(ent.Asc(group.FieldID)).
-		Modify(func(s *sql.Selector) {
-			t := sql.Table(group.UsersTable)
+		Modify(func(s *builder.Selector) {
+			t := builder.Table(group.UsersTable)
 			s.LeftJoin(t).
 				On(
 					s.C(group.FieldID),
@@ -739,7 +740,7 @@ func Select(t *testing.T, client *ent.Client) {
 				).
 				// Append the "users_count" column to the selected columns.
 				AppendSelect(
-					sql.As(sql.Count(t.C(group.UsersPrimaryKey[1])), "users_count"),
+					builder.As(builder.Count(t.C(group.UsersPrimaryKey[1])), "users_count"),
 				).
 				GroupBy(s.C(group.FieldID))
 		}).
@@ -752,8 +753,8 @@ func Select(t *testing.T, client *ent.Client) {
 	t.Log("select subquery")
 	i, err := client.User.
 		Query().
-		Modify(func(s *sql.Selector) {
-			subQuery := sql.SelectExpr(sql.Raw("1")).As("s")
+		Modify(func(s *builder.Selector) {
+			subQuery := builder.SelectExpr(builder.Raw("1")).As("s")
 			s.Select("*").From(subQuery)
 		}).
 		Int(ctx)
@@ -764,10 +765,10 @@ func Select(t *testing.T, client *ent.Client) {
 	u = client.User.Create().SetName("crossworth").SetAge(28).SaveX(ctx)
 	id := client.User.
 		Query().
-		Where(func(s *sql.Selector) {
-			subQuery := sql.Select(user.FieldID).
-				From(sql.Table(user.Table)).
-				Where(sql.EQ(s.C(user.FieldName), "crossworth"))
+		Where(func(s *builder.Selector) {
+			subQuery := builder.Select(user.FieldID).
+				From(builder.Table(user.Table)).
+				Where(builder.EQ(s.C(user.FieldName), "crossworth"))
 			s.Join(subQuery).On(s.C(user.FieldID), subQuery.C(user.FieldID))
 		}).
 		OnlyIDX(ctx)
@@ -785,8 +786,8 @@ func Select(t *testing.T, client *ent.Client) {
 	require.False(allUpper(), "at least one name is not upper-cased")
 	// Execute custom update modifier.
 	client.User.Update().
-		Modify(func(u *sql.UpdateBuilder) {
-			u.Set(user.FieldName, sql.Expr(fmt.Sprintf("UPPER(%s)", user.FieldName)))
+		Modify(func(u *builder.UpdateBuilder) {
+			u.Set(user.FieldName, builder.Expr(fmt.Sprintf("UPPER(%s)", user.FieldName)))
 		}).
 		ExecX(ctx)
 	require.True(allUpper(), "at names must be upper-cased")
@@ -797,7 +798,7 @@ func Select(t *testing.T, client *ent.Client) {
 		as2 = "another_name"
 	)
 	pets = client.Pet.Query().
-		Modify(func(s *sql.Selector) {
+		Modify(func(s *builder.Selector) {
 			s.AppendSelectAs("LENGTH(name)", as1)
 			s.AppendSelectAs("optional_time", as2)
 		}).
@@ -814,7 +815,7 @@ func Select(t *testing.T, client *ent.Client) {
 	// Update and scan.
 	require.NoError(client.Pet.Update().SetOptionalTime(time.Now()).Exec(ctx))
 	pets = client.Pet.Query().
-		Modify(func(s *sql.Selector) {
+		Modify(func(s *builder.Selector) {
 			s.AppendSelectAs("optional_time", as2)
 		}).
 		AllX(ctx)
@@ -1383,12 +1384,12 @@ func Relation(t *testing.T, client *ent.Client) {
 		Where(user.IDIn(foo.ID, bar.ID)).
 		Order(ent.Asc(user.FieldID)).
 		GroupBy(user.FieldID, user.FieldName).
-		Aggregate(func(s *sql.Selector) string {
+		Aggregate(func(s *builder.Selector) string {
 			// Join with pet table and calculate the
 			// average age of the pets of each user.
-			t := sql.Table(pet.Table)
+			t := builder.Table(pet.Table)
 			s.Join(t).On(s.C(user.FieldID), t.C(pet.OwnerColumn))
-			return sql.As(sql.Avg(t.C(pet.FieldAge)), "average")
+			return builder.As(builder.Avg(t.C(pet.FieldAge)), "average")
 		}).
 		ScanX(ctx, &v3)
 	require.Len(v3, 2)
@@ -1405,10 +1406,10 @@ func Relation(t *testing.T, client *ent.Client) {
 		Owner string `sql:"owner"`
 	}
 	client.Pet.Query().
-		Where(func(s *sql.Selector) {
-			t := sql.Table(user.Table).As(user.Table)
+		Where(func(s *builder.Selector) {
+			t := builder.Table(user.Table).As(user.Table)
 			s.Join(t).On(s.C(pet.OwnerColumn), t.C(user.FieldID)) // owner_id = id for edge fields.
-			s.AppendSelect(sql.As(t.C(user.FieldName), "owner"))
+			s.AppendSelect(builder.As(t.C(user.FieldName), "owner"))
 		}).
 		Order(ent.Asc(pet.FieldID)).
 		Select(pet.FieldID, pet.FieldName).
@@ -2077,9 +2078,9 @@ func EagerLoading(t *testing.T, client *ent.Client) {
 	})
 }
 
-func limitRows(partitionBy string, limit int, orderBy ...string) func(s *sql.Selector) {
-	return func(s *sql.Selector) {
-		d := sql.Dialect(s.Dialect())
+func limitRows(partitionBy string, limit int, orderBy ...string) func(s *builder.Selector) {
+	return func(s *builder.Selector) {
+		d := builder.Dialect(s.Dialect())
 		s.SetDistinct(false)
 		if len(orderBy) == 0 {
 			orderBy = append(orderBy, "id")
@@ -2090,7 +2091,7 @@ func limitRows(partitionBy string, limit int, orderBy ...string) func(s *sql.Sel
 			As(
 				d.Select("*").
 					AppendSelectExprAs(
-						sql.RowNumber().PartitionBy(partitionBy).OrderBy(orderBy...),
+						builder.RowNumber().PartitionBy(partitionBy).OrderBy(orderBy...),
 						"row_number",
 					).
 					From(d.Table("src_query")),
@@ -2098,7 +2099,7 @@ func limitRows(partitionBy string, limit int, orderBy ...string) func(s *sql.Sel
 		t := d.Table("limited_query").As(s.TableName())
 		*s = *d.Select(s.UnqualifiedColumns()...).
 			From(t).
-			Where(sql.LTE(t.C("row_number"), limit)).
+			Where(builder.LTE(t.C("row_number"), limit)).
 			Prefix(with)
 	}
 }
@@ -2352,7 +2353,7 @@ func Lock(t *testing.T, client *ent.Client) {
 		tx3, err := client.Tx(ctx)
 		require.NoError(t, err)
 		p1 := tx1.Pet.Query().Where(pet.ID(xabi.ID)).ForUpdate().OnlyX(ctx)
-		_, err = tx2.Pet.Query().Where(pet.ID(xabi.ID)).ForUpdate(sql.WithLockAction(sql.NoWait)).Only(ctx)
+		_, err = tx2.Pet.Query().Where(pet.ID(xabi.ID)).ForUpdate(builder.WithLockAction(builder.NoWait)).Only(ctx)
 		switch name := t.Name(); {
 		case strings.Contains(name, "Postgres"):
 			err := err.(*pq.Error)
@@ -2387,8 +2388,8 @@ func Lock(t *testing.T, client *ent.Client) {
 		_, err = tx3.Pet.Query().
 			Where(pet.ID(xabi.ID)).
 			ForUpdate(
-				sql.WithLockTables(pet.Table),
-				sql.WithLockAction(sql.NoWait),
+				builder.WithLockTables(pet.Table),
+				builder.WithLockAction(builder.NoWait),
 			).
 			Only(ctx)
 		require.Error(t, err)
@@ -2675,7 +2676,7 @@ func OrderByEdgeCount(t *testing.T, client *ent.Client) {
 		{ids: []int{users[3].ID, users[2].ID, users[1].ID, users[0].ID}},
 	} {
 		ids := client.User.Query().
-			Order(func(s *sql.Selector) {
+			Order(func(s *builder.Selector) {
 				sqlgraph.OrderByNeighborsCount(s,
 					sqlgraph.NewStep(
 						sqlgraph.From(user.Table, user.FieldID),
@@ -2698,7 +2699,7 @@ func OrderByEdgeCount(t *testing.T, client *ent.Client) {
 	} {
 		ids := client.Pet.Query().
 			Order(
-				func(s *sql.Selector) {
+				func(s *builder.Selector) {
 					sqlgraph.OrderByNeighborsCount(s,
 						sqlgraph.NewStep(
 							sqlgraph.From(pet.Table, pet.OwnerColumn),
@@ -2730,7 +2731,7 @@ func OrderByEdgeCount(t *testing.T, client *ent.Client) {
 		{ids: []int{groups[4].ID, groups[3].ID, groups[2].ID, groups[1].ID, groups[0].ID}},
 	} {
 		ids := client.Group.Query().
-			Order(func(s *sql.Selector) {
+			Order(func(s *builder.Selector) {
 				sqlgraph.OrderByNeighborsCount(s,
 					sqlgraph.NewStep(
 						sqlgraph.From(group.Table, group.FieldID),
@@ -2752,7 +2753,7 @@ func OrderByEdgeCount(t *testing.T, client *ent.Client) {
 		{ids: []int{users[3].ID, users[2].ID, users[1].ID, users[0].ID}},
 	} {
 		ids := client.User.Query().
-			Order(func(s *sql.Selector) {
+			Order(func(s *builder.Selector) {
 				sqlgraph.OrderByNeighborsCount(s,
 					sqlgraph.NewStep(
 						sqlgraph.From(user.Table, user.FieldID),
@@ -2769,7 +2770,7 @@ func OrderByEdgeCount(t *testing.T, client *ent.Client) {
 	t.Run("Value", func(t *testing.T) {
 		const as = "pets_count"
 		nodes := client.User.Query().
-			Order(func(s *sql.Selector) {
+			Order(func(s *builder.Selector) {
 				sqlgraph.OrderByNeighborsCount(s,
 					sqlgraph.NewStep(
 						sqlgraph.From(user.Table, user.FieldID),
@@ -2830,7 +2831,7 @@ func OrderByEdgeTerms(t *testing.T, client *ent.Client) {
 		},
 	} {
 		ids := client.Pet.Query().
-			Order(func(s *sql.Selector) {
+			Order(func(s *builder.Selector) {
 				sqlgraph.OrderByNeighborTerms(s,
 					sqlgraph.NewStep(
 						sqlgraph.From(pet.Table, pet.FieldID),
@@ -2859,7 +2860,7 @@ func OrderByEdgeTerms(t *testing.T, client *ent.Client) {
 		},
 	} {
 		ids := client.User.Query().
-			Order(func(s *sql.Selector) {
+			Order(func(s *builder.Selector) {
 				sqlgraph.OrderByNeighborTerms(s,
 					sqlgraph.NewStep(
 						sqlgraph.From(user.Table, user.FieldID),
@@ -2902,7 +2903,7 @@ func OrderByEdgeTerms(t *testing.T, client *ent.Client) {
 		},
 	} {
 		ids := client.User.Query().
-			Order(func(s *sql.Selector) {
+			Order(func(s *builder.Selector) {
 				sqlgraph.OrderByNeighborTerms(s,
 					sqlgraph.NewStep(
 						sqlgraph.From(user.Table, user.FieldID),

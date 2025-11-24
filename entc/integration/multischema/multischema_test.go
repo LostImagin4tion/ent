@@ -15,6 +15,7 @@ import (
 	"ariga.io/atlas-go-sdk/atlasexec"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/builder"
 	"entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/entc/integration/multischema/ent"
 	"entgo.io/ent/entc/integration/multischema/ent/group"
@@ -88,15 +89,15 @@ func TestMySQL(t *testing.T) {
 		Pet  string `sql:"pet_name"`
 	}
 	client.Pet.Query().
-		Modify(func(s *sql.Selector) {
+		Modify(func(s *builder.Selector) {
 			// The below function is exported using a custom
 			// template defined in ent/template/config.tmpl.
 			cfg := ent.SchemaConfigFromContext(s.Context())
-			t := sql.Table(user.Table).Schema(cfg.User)
+			t := builder.Table(user.Table).Schema(cfg.User)
 			s.Join(t).On(s.C(pet.FieldOwnerID), t.C(user.FieldID))
 			s.Select(
-				sql.As(t.C(user.FieldName), "user_name"),
-				sql.As(s.C(pet.FieldName), "pet_name"),
+				builder.As(t.C(user.FieldName), "user_name"),
+				builder.As(s.C(pet.FieldName), "pet_name"),
 			)
 		}).
 		ScanX(ctx, &names)
@@ -213,15 +214,15 @@ func TestVersionedMigration(t *testing.T) {
 		Pet  string `sql:"pet_name"`
 	}
 	client.Pet.Query().
-		Modify(func(s *sql.Selector) {
+		Modify(func(s *builder.Selector) {
 			// The below function is exported using a custom
 			// template defined in ent/template/config.tmpl.
 			cfg := versioned.DefaultSchemaConfig
-			t := sql.Table(user.Table).Schema(cfg.User)
+			t := builder.Table(user.Table).Schema(cfg.User)
 			s.Join(t).On(s.C(pet.FieldOwnerID), t.C(user.FieldID))
 			s.Select(
-				sql.As(t.C(user.FieldName), "user_name"),
-				sql.As(s.C(pet.FieldName), "pet_name"),
+				builder.As(t.C(user.FieldName), "user_name"),
+				builder.As(s.C(pet.FieldName), "pet_name"),
 			)
 		}).
 		ScanX(ctx, &names)

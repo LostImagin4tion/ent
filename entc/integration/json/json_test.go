@@ -16,6 +16,7 @@ import (
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/builder"
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/entc/integration/json/ent"
 	"entgo.io/ent/entc/integration/json/ent/migrate"
@@ -234,7 +235,7 @@ func Strings(t *testing.T, client *ent.Client) {
 	t.Run("Modifier API", func(t *testing.T) {
 		// Append to an empty array.
 		usr.Update().SetStrings([]string{}).SetT(&schema.T{Ls: []string{}}).ExecX(ctx)
-		usr = usr.Update().Modify(func(u *sql.UpdateBuilder) {
+		usr = usr.Update().Modify(func(u *builder.UpdateBuilder) {
 			sqljson.Append(u, user.FieldStrings, []string{"foo"})
 			sqljson.Append(u, user.FieldT, []string{"foo"}, sqljson.Path("ls"))
 		}).SaveX(ctx)
@@ -245,13 +246,13 @@ func Strings(t *testing.T, client *ent.Client) {
 		usr.Update().ClearStrings().ClearT().ExecX(ctx)
 		usr.Update().SetStrings(nil).SetT(&schema.T{Ls: nil}).ExecX(ctx)
 		usr = client.User.GetX(ctx, usr.ID)
-		usr = usr.Update().Modify(func(u *sql.UpdateBuilder) {
+		usr = usr.Update().Modify(func(u *builder.UpdateBuilder) {
 			sqljson.Append(u, user.FieldStrings, []string{"foo"})
 			sqljson.Append(u, user.FieldT, []string{"foo"}, sqljson.Path("ls"))
 		}).SaveX(ctx)
 		require.Equal(t, []string{"foo"}, usr.Strings)
 		require.Equal(t, []string{"foo"}, usr.T.Ls)
-		usr = usr.Update().Modify(func(u *sql.UpdateBuilder) {
+		usr = usr.Update().Modify(func(u *builder.UpdateBuilder) {
 			sqljson.Append(u, user.FieldStrings, []string{"bar", "baz"})
 			sqljson.Append(u, user.FieldT, []string{"bar", "baz"}, sqljson.Path("ls"))
 		}).SaveX(ctx)
@@ -260,7 +261,7 @@ func Strings(t *testing.T, client *ent.Client) {
 
 		// Set a NULL (or an undefined) value.
 		usr.Update().ClearStrings().ExecX(ctx)
-		usr = usr.Update().Modify(func(u *sql.UpdateBuilder) {
+		usr = usr.Update().Modify(func(u *builder.UpdateBuilder) {
 			sqljson.Append(u, user.FieldStrings, []string{"foo"})
 		}).SaveX(ctx)
 		require.Equal(t, []string{"foo"}, usr.Strings)
@@ -396,44 +397,44 @@ func Predicates(t *testing.T, client *ent.Client) {
 	require.NoError(t, err)
 	require.Len(t, users, 2)
 
-	count, err := client.User.Query().Where(func(s *sql.Selector) {
+	count, err := client.User.Query().Where(func(s *builder.Selector) {
 		s.Where(sqljson.HasKey(user.FieldURL, sqljson.Path("Scheme")))
 	}).Count(ctx)
 	require.NoError(t, err)
 	require.Equal(t, 2, count)
 
-	count, err = client.User.Query().Where(func(s *sql.Selector) {
-		s.Where(sql.Not(sqljson.HasKey(user.FieldURL, sqljson.Path("Scheme"))))
+	count, err = client.User.Query().Where(func(s *builder.Selector) {
+		s.Where(builder.Not(sqljson.HasKey(user.FieldURL, sqljson.Path("Scheme"))))
 	}).Count(ctx)
 	require.NoError(t, err)
 	require.Zero(t, count)
 
-	count, err = client.User.Query().Where(func(s *sql.Selector) {
+	count, err = client.User.Query().Where(func(s *builder.Selector) {
 		s.Where(sqljson.ValueEQ(user.FieldURL, "https", sqljson.Path("Scheme")))
 	}).Count(ctx)
 	require.NoError(t, err)
 	require.Equal(t, 1, count)
 
-	count, err = client.User.Query().Where(func(s *sql.Selector) {
+	count, err = client.User.Query().Where(func(s *builder.Selector) {
 		s.Where(sqljson.ValueNEQ(user.FieldURL, "https", sqljson.Path("Scheme")))
 	}).Count(ctx)
 	require.NoError(t, err)
 	require.Equal(t, 1, count)
 
 	t.Run("ValueIn", func(t *testing.T) {
-		count, err = client.User.Query().Where(func(s *sql.Selector) {
+		count, err = client.User.Query().Where(func(s *builder.Selector) {
 			s.Where(sqljson.ValueIn(user.FieldURL, []any{"https", "http"}, sqljson.Path("Scheme")))
 		}).Count(ctx)
 		require.NoError(t, err)
 		require.Equal(t, 1, count)
 
-		count, err = client.User.Query().Where(func(s *sql.Selector) {
+		count, err = client.User.Query().Where(func(s *builder.Selector) {
 			s.Where(sqljson.ValueIn(user.FieldURL, []any{"https", "ftp"}, sqljson.Path("Scheme")))
 		}).Count(ctx)
 		require.NoError(t, err)
 		require.Equal(t, 2, count)
 
-		count, err = client.User.Query().Where(func(s *sql.Selector) {
+		count, err = client.User.Query().Where(func(s *builder.Selector) {
 			s.Where(sqljson.ValueIn(user.FieldURL, []any{"a", "b"}, sqljson.Path("Scheme")))
 		}).Count(ctx)
 		require.NoError(t, err)
@@ -441,19 +442,19 @@ func Predicates(t *testing.T, client *ent.Client) {
 	})
 
 	t.Run("ValueNotIn", func(t *testing.T) {
-		count, err = client.User.Query().Where(func(s *sql.Selector) {
+		count, err = client.User.Query().Where(func(s *builder.Selector) {
 			s.Where(sqljson.ValueNotIn(user.FieldURL, []any{"https", "http"}, sqljson.Path("Scheme")))
 		}).Count(ctx)
 		require.NoError(t, err)
 		require.Equal(t, 1, count)
 
-		count, err = client.User.Query().Where(func(s *sql.Selector) {
+		count, err = client.User.Query().Where(func(s *builder.Selector) {
 			s.Where(sqljson.ValueNotIn(user.FieldURL, []any{"https", "ftp"}, sqljson.Path("Scheme")))
 		}).Count(ctx)
 		require.NoError(t, err)
 		require.Equal(t, 0, count)
 
-		count, err = client.User.Query().Where(func(s *sql.Selector) {
+		count, err = client.User.Query().Where(func(s *builder.Selector) {
 			s.Where(sqljson.ValueNotIn(user.FieldURL, []any{"a", "b"}, sqljson.Path("Scheme")))
 		}).Count(ctx)
 		require.NoError(t, err)
@@ -468,21 +469,21 @@ func Predicates(t *testing.T, client *ent.Client) {
 	require.NoError(t, err)
 	require.Len(t, users, 2)
 
-	count, err = client.User.Query().Where(func(s *sql.Selector) {
+	count, err = client.User.Query().Where(func(s *builder.Selector) {
 		s.Where(sqljson.ValueGTE(user.FieldT, 1, sqljson.Path("i")))
 	}).Count(ctx)
 	require.NoError(t, err)
 	require.Equal(t, 2, count)
 
-	count, err = client.User.Query().Where(func(s *sql.Selector) {
+	count, err = client.User.Query().Where(func(s *builder.Selector) {
 		s.Where(sqljson.ValueLTE(user.FieldT, 30, sqljson.DotPath("t.t.i")))
 	}).Count(ctx)
 	require.NoError(t, err)
 	require.Equal(t, 1, count)
 
-	count, err = client.User.Query().Where(func(s *sql.Selector) {
+	count, err = client.User.Query().Where(func(s *builder.Selector) {
 		s.Where(
-			sql.Or(
+			builder.Or(
 				sqljson.ValueEQ(user.FieldT, 1.1, sqljson.Path("f")),
 				sqljson.ValueEQ(user.FieldT, 30, sqljson.DotPath("t.t.i")),
 			),
@@ -500,23 +501,23 @@ func Predicates(t *testing.T, client *ent.Client) {
 	require.NoError(t, err)
 
 	for _, u := range users {
-		r := client.User.Query().Where(func(s *sql.Selector) {
+		r := client.User.Query().Where(func(s *builder.Selector) {
 			s.Where(sqljson.LenEQ(user.FieldInts, len(u.Ints)))
 		}).OnlyX(ctx)
 		require.Equal(t, u.Ints, r.Ints)
 	}
 
-	r := client.User.Query().Where(func(s *sql.Selector) {
+	r := client.User.Query().Where(func(s *builder.Selector) {
 		s.Where(sqljson.ValueContains(user.FieldInts, 3))
 	}).OnlyX(ctx)
 	require.Contains(t, r.Ints, 3)
 
-	r = client.User.Query().Where(func(s *sql.Selector) {
+	r = client.User.Query().Where(func(s *builder.Selector) {
 		s.Where(sqljson.ValueContains(user.FieldT, 3, sqljson.Path("li")))
 	}).OnlyX(ctx)
 	require.Contains(t, r.T.Li, 3)
 
-	r = client.User.Query().Where(func(s *sql.Selector) {
+	r = client.User.Query().Where(func(s *builder.Selector) {
 		s.Where(sqljson.ValueContains(user.FieldT, "a", sqljson.Path("ls")))
 	}).OnlyX(ctx)
 	require.Contains(t, r.T.Ls, "a")
@@ -530,17 +531,17 @@ func Predicates(t *testing.T, client *ent.Client) {
 		require.Nil(t, users[0].URL.User)
 		require.NotNil(t, users[1].URL.User)
 
-		u1 := client.User.Query().Where(func(s *sql.Selector) {
+		u1 := client.User.Query().Where(func(s *builder.Selector) {
 			s.Where(sqljson.ValueIsNull(user.FieldURL, sqljson.Path("User")))
 		}).OnlyX(ctx)
 		require.Equal(t, users[0].ID, u1.ID)
 
-		u2 := client.User.Query().Where(func(s *sql.Selector) {
+		u2 := client.User.Query().Where(func(s *builder.Selector) {
 			s.Where(sqljson.ValueIsNotNull(user.FieldURL, sqljson.Path("User")))
 		}).OnlyX(ctx)
 		require.Equal(t, users[1].ID, u2.ID)
 
-		n := client.User.Query().Where(func(s *sql.Selector) {
+		n := client.User.Query().Where(func(s *builder.Selector) {
 			s.Where(sqljson.HasKey(user.FieldURL, sqljson.Path("User")))
 		}).CountX(ctx)
 		require.Equal(t, 2, n, "both u1 and u2 have a 'User' key")
@@ -558,44 +559,44 @@ func Predicates(t *testing.T, client *ent.Client) {
 		).ExecX(ctx)
 		require.NoError(t, err)
 
-		ps := []*sql.Predicate{
+		ps := []*builder.Predicate{
 			sqljson.StringContains(user.FieldDirs, "dev", sqljson.Path("[0]")),
 			sqljson.StringHasPrefix(user.FieldDirs, "/dev", sqljson.Path("[0]")),
 			sqljson.StringHasSuffix(user.FieldDirs, "/null", sqljson.Path("[0]")),
 		}
 		for _, p := range ps {
-			r = client.User.Query().Where(func(s *sql.Selector) { s.Where(p) }).OnlyX(ctx)
+			r = client.User.Query().Where(func(s *builder.Selector) { s.Where(p) }).OnlyX(ctx)
 			require.Equal(t, dirs, r.Dirs)
 		}
-		r = client.User.Query().Where(func(s *sql.Selector) { s.Where(sql.And(ps...)) }).OnlyX(ctx)
+		r = client.User.Query().Where(func(s *builder.Selector) { s.Where(builder.And(ps...)) }).OnlyX(ctx)
 		require.Equal(t, dirs, r.Dirs)
 
-		ps = []*sql.Predicate{
+		ps = []*builder.Predicate{
 			sqljson.StringContains(user.FieldURL, "hub", sqljson.Path("Host")),
 			sqljson.StringHasPrefix(user.FieldURL, "github", sqljson.Path("Host")),
 			sqljson.StringHasSuffix(user.FieldURL, "hub.com", sqljson.Path("Host")),
 		}
 		for _, p := range ps {
-			r = client.User.Query().Where(func(s *sql.Selector) { s.Where(p) }).OnlyX(ctx)
+			r = client.User.Query().Where(func(s *builder.Selector) { s.Where(p) }).OnlyX(ctx)
 			require.Equal(t, u, r.URL)
 		}
 
-		ps = []*sql.Predicate{
+		ps = []*builder.Predicate{
 			sqljson.StringHasPrefix(user.FieldT, "foo", sqljson.Path("ls", "[0]")),
 			sqljson.StringHasSuffix(user.FieldT, "bar", sqljson.DotPath("ls[1]")),
-			sql.And(
-				sql.Or(
+			builder.And(
+				builder.Or(
 					sqljson.StringContains(user.FieldT, "foo", sqljson.DotPath("ls[0]")),
 					sqljson.StringContains(user.FieldT, "foo", sqljson.DotPath("ls[1]")),
 				),
-				sql.Or(
+				builder.Or(
 					sqljson.StringContains(user.FieldT, "bar", sqljson.DotPath("ls[0]")),
 					sqljson.StringContains(user.FieldT, "bar", sqljson.DotPath("ls[1]")),
 				),
 			),
 		}
 		for _, p := range ps {
-			r = client.User.Query().Where(func(s *sql.Selector) { s.Where(p) }).OnlyX(ctx)
+			r = client.User.Query().Where(func(s *builder.Selector) { s.Where(p) }).OnlyX(ctx)
 			require.Equal(t, []string{"foo", "bar"}, r.T.Ls)
 		}
 	})
@@ -611,44 +612,44 @@ func Predicates(t *testing.T, client *ent.Client) {
 		).ExecX(ctx)
 		require.NoError(t, err)
 
-		n := client.User.Query().Where(func(s *sql.Selector) {
+		n := client.User.Query().Where(func(s *builder.Selector) {
 			s.Where(sqljson.HasKey(user.FieldT, sqljson.Path("m")))
 		}).CountX(ctx)
 		require.Equal(t, 4, n, "take all 'm', including empty and null as omitempty is not set")
 
-		n = client.User.Query().Where(func(s *sql.Selector) {
+		n = client.User.Query().Where(func(s *builder.Selector) {
 			s.Where(sqljson.HasKey(user.FieldT, sqljson.DotPath("m.a")))
 		}).CountX(ctx)
 		require.Equal(t, 2, n)
-		n = client.User.Query().Where(func(s *sql.Selector) {
+		n = client.User.Query().Where(func(s *builder.Selector) {
 			s.Where(
-				sql.Not(
+				builder.Not(
 					sqljson.HasKey(user.FieldT, sqljson.DotPath("m.a")),
 				),
 			)
 		}).CountX(ctx)
 		require.Equal(t, 3, n)
 
-		n = client.User.Query().Where(func(s *sql.Selector) {
+		n = client.User.Query().Where(func(s *builder.Selector) {
 			s.Where(sqljson.HasKey(user.FieldT, sqljson.DotPath("m.a.b")))
 		}).CountX(ctx)
 		require.Equal(t, 1, n)
-		n = client.User.Query().Where(func(s *sql.Selector) {
+		n = client.User.Query().Where(func(s *builder.Selector) {
 			s.Where(
-				sql.Not(
+				builder.Not(
 					sqljson.HasKey(user.FieldT, sqljson.DotPath("m.a.b")),
 				),
 			)
 		}).CountX(ctx)
 		require.Equal(t, 4, n)
 
-		n = client.User.Query().Where(func(s *sql.Selector) {
+		n = client.User.Query().Where(func(s *builder.Selector) {
 			s.Where(sqljson.HasKey(user.FieldT, sqljson.DotPath("m.a.c")))
 		}).CountX(ctx)
 		require.Equal(t, 1, n)
-		n = client.User.Query().Where(func(s *sql.Selector) {
+		n = client.User.Query().Where(func(s *builder.Selector) {
 			s.Where(
-				sql.Not(
+				builder.Not(
 					sqljson.HasKey(user.FieldT, sqljson.DotPath("m.a.c")),
 				),
 			)
@@ -658,14 +659,14 @@ func Predicates(t *testing.T, client *ent.Client) {
 
 	t.Run("Boolean", func(t *testing.T) {
 		users := client.User.Query().
-			Where(func(s *sql.Selector) {
+			Where(func(s *builder.Selector) {
 				s.Where(sqljson.ValueEQ(user.FieldT, true, sqljson.Path("b")))
 			}).
 			AllX(ctx)
 		require.Empty(t, users)
 		client.User.Create().SetT(&schema.T{B: true}).ExecX(ctx)
 		u1 := client.User.Query().
-			Where(func(s *sql.Selector) {
+			Where(func(s *builder.Selector) {
 				s.Where(sqljson.ValueEQ(user.FieldT, true, sqljson.Path("b")))
 			}).
 			OnlyX(ctx)

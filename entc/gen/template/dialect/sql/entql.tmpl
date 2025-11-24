@@ -80,7 +80,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 // predicateAdder wraps the addPredicate method.
 // All update, update-one and query builders implement this interface.
 type predicateAdder interface {
-	addPredicate(func(s *sql.Selector))
+	addPredicate(func(s *builder.Selector))
 }
 
 {{ range $i, $n := $.Nodes }}
@@ -90,7 +90,7 @@ type predicateAdder interface {
 	{{ $filter := print $n.FilterName }}
 
 	// addPredicate implements the predicateAdder interface.
-	func ({{ $receiver }} *{{ $builder }}) addPredicate(pred func(s *sql.Selector)) {
+	func ({{ $receiver }} *{{ $builder }}) addPredicate(pred func(s *builder.Selector)) {
 		{{ $receiver }}.predicates = append({{ $receiver }}.predicates, pred)
 	}
 
@@ -101,7 +101,7 @@ type predicateAdder interface {
 
 	{{- if not $n.IsView }}
 			// addPredicate implements the predicateAdder interface.
-			func (m *{{ $mutation }}) addPredicate(pred func(s *sql.Selector)) {
+			func (m *{{ $mutation }}) addPredicate(pred func(s *builder.Selector)) {
 				m.predicates = append(m.predicates, pred)
 			}
 
@@ -119,7 +119,7 @@ type predicateAdder interface {
 
 	// Where applies the entql predicate on the query filter.
 	func (f *{{ $filter }}) Where(p entql.P) {
-		f.addPredicate(func(s *sql.Selector) {
+		f.addPredicate(func(s *builder.Selector) {
 			if err := schemaGraph.EvalP(schemaGraph.Nodes[{{ $i }}].Type, p, s); err != nil {
 				s.AddError(err)
 			}
@@ -162,7 +162,7 @@ type predicateAdder interface {
 		{{ $func = print "WhereHas" $e.StructField "With" }}
 		// {{ $func }} applies a predicate to check if query has an edge {{ $e.Name }} with a given conditions (other predicates).
 		func (f *{{ $filter }}) {{ $func }}(preds ...predicate.{{ $e.Type.Name }}) {
-			f.Where(entql.HasEdgeWith("{{ $e.Name }}", sqlgraph.WrapFunc(func(s *sql.Selector) {
+			f.Where(entql.HasEdgeWith("{{ $e.Name }}", sqlgraph.WrapFunc(func(s *builder.Selector) {
 				for _, p := range preds {
 					p(s)
 				}

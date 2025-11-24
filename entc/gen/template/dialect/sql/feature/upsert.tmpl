@@ -12,14 +12,14 @@ in the LICENSE file in the root directory of this source tree.
 {{/* Template for adding the "conflict" field to the create builder. */}}
 {{ define "dialect/sql/create/fields/additional/upsert" -}}
 	{{- if $.FeatureEnabled "sql/upsert" }}
-		conflict []sql.ConflictOption
+		conflict []builder.ConflictOption
 	{{- end }}
 {{- end -}}
 
 {{/* Template for adding the "conflict" field to the create-bulk builder. */}}
 {{ define "dialect/sql/create_bulk/fields/additional/upsert" -}}
 	{{- if $.FeatureEnabled "sql/upsert" }}
-		conflict []sql.ConflictOption
+		conflict []builder.ConflictOption
 	{{- end }}
 {{- end -}}
 
@@ -62,7 +62,7 @@ in the LICENSE file in the root directory of this source tree.
 //		OnConflict(
 //			// Update the row with the new values
 //			// the was proposed for insertion.
-//			sql.ResolveWithNewValues(),
+//			builder.ResolveWithNewValues(),
 //		).
 {{- with $.Fields }}
     {{- $f := index $.Fields 0 }}
@@ -74,7 +74,7 @@ in the LICENSE file in the root directory of this source tree.
 {{- end }}
 //		Exec(ctx)
 //
-func ({{ $receiver }} *{{ $builder }}) OnConflict(opts ...sql.ConflictOption) *{{ $upsertOne }} {
+func ({{ $receiver }} *{{ $builder }}) OnConflict(opts ...builder.ConflictOption) *{{ $upsertOne }} {
 	{{ $receiver }}.conflict = opts
 	return &{{ $upsertOne }}{
 		create: {{ $receiver }},
@@ -85,11 +85,11 @@ func ({{ $receiver }} *{{ $builder }}) OnConflict(opts ...sql.ConflictOption) *{
 // as conflict target. Using this option is equivalent to using:
 //
 //	client.{{ $.Name }}.Create().
-//		OnConflict(sql.ConflictColumns(columns...)).
+//		OnConflict(builder.ConflictColumns(columns...)).
 //		Exec(ctx)
 //
 func ({{ $receiver }} *{{ $builder }}) OnConflictColumns(columns ...string) *{{ $upsertOne }} {
-	{{ $receiver }}.conflict = append({{ $receiver }}.conflict, sql.ConflictColumns(columns...))
+	{{ $receiver }}.conflict = append({{ $receiver }}.conflict, builder.ConflictColumns(columns...))
 	return &{{ $upsertOne }}{
 		create: {{ $receiver }},
 	}
@@ -104,7 +104,7 @@ type (
 
 	// {{ $upsertSet }} is the "OnConflict" setter.
 	{{ $upsertSet }} struct {
-		*sql.UpdateSet
+		*builder.UpdateSet
 	}
 )
 
@@ -149,9 +149,9 @@ type (
 //
 //	client.{{ $.Name }}.Create().
 //		OnConflict(
-//			sql.ResolveWithNewValues(),
+//			builder.ResolveWithNewValues(),
 {{- if $udfID }}
-//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//			builder.ResolveWith(func(u *builder.UpdateSet) {
 //				u.SetIgnore({{ $.Package }}.{{ $.ID.Constant }})
 //			}),
 {{- end }}
@@ -159,9 +159,9 @@ type (
 //		Exec(ctx)
 //
 func (u *{{ $upsertOne }}) UpdateNewValues() *{{ $upsertOne }} {
-	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, builder.ResolveWithNewValues())
 	{{- if or $udfID $.ImmutableFields }}
-		u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		u.create.conflict = append(u.create.conflict, builder.ResolveWith(func(s *builder.UpdateSet) {
 			{{- if $udfID }}
 				if _, exists := u.create.mutation.ID(); exists {
 					s.SetIgnore({{ $.Package }}.{{ $.ID.Constant }})
@@ -181,25 +181,25 @@ func (u *{{ $upsertOne }}) UpdateNewValues() *{{ $upsertOne }} {
 // Using this option is equivalent to using:
 //
 //  client.{{ $.Name }}.Create().
-//      OnConflict(sql.ResolveWithIgnore()).
+//      OnConflict(builder.ResolveWithIgnore()).
 //      Exec(ctx)
 //
 func (u *{{ $upsertOne }}) Ignore() *{{ $upsertOne }} {
-	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	u.create.conflict = append(u.create.conflict, builder.ResolveWithIgnore())
 	return u
 }
 
 // DoNothing configures the conflict_action to `DO NOTHING`.
 // Supported only by SQLite and PostgreSQL.
 func (u *{{ $upsertOne }}) DoNothing() *{{ $upsertOne }} {
-	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	u.create.conflict = append(u.create.conflict, builder.DoNothing())
 	return u
 }
 
 // Update allows overriding fields `UPDATE` values. See the {{ $builder }}.OnConflict
 // documentation for more info.
 func (u *{{ $upsertOne }}) Update(set func(*{{ $upsertSet }})) *{{ $upsertOne }} {
-	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+	u.create.conflict = append(u.create.conflict, builder.ResolveWith(func(update *builder.UpdateSet) {
 		set(&{{ $upsertSet }}{UpdateSet: update})
 	}))
 	return u
@@ -276,7 +276,7 @@ func (u *{{ $upsertOne }}) ExecX(ctx context.Context) {
 //		OnConflict(
 //			// Update the row with the new values
 //			// the was proposed for insertion.
-//			sql.ResolveWithNewValues(),
+//			builder.ResolveWithNewValues(),
 //		).
 {{- with $.Fields }}
 		{{- $f := index $.Fields 0 }}
@@ -288,7 +288,7 @@ func (u *{{ $upsertOne }}) ExecX(ctx context.Context) {
 {{- end }}
 //		Exec(ctx)
 //
-func ({{ $receiver }} *{{ $builder }}) OnConflict(opts ...sql.ConflictOption) *{{ $upsertBulk }} {
+func ({{ $receiver }} *{{ $builder }}) OnConflict(opts ...builder.ConflictOption) *{{ $upsertBulk }} {
 	{{ $receiver }}.conflict = opts
 	return &{{ $upsertBulk }}{
 		create: {{ $receiver }},
@@ -299,11 +299,11 @@ func ({{ $receiver }} *{{ $builder }}) OnConflict(opts ...sql.ConflictOption) *{
 // as conflict target. Using this option is equivalent to using:
 //
 //	client.{{ $.Name }}.Create().
-//		OnConflict(sql.ConflictColumns(columns...)).
+//		OnConflict(builder.ConflictColumns(columns...)).
 //		Exec(ctx)
 //
 func ({{ $receiver }} *{{ $builder }}) OnConflictColumns(columns ...string) *{{ $upsertBulk }} {
-	{{ $receiver }}.conflict = append({{ $receiver }}.conflict, sql.ConflictColumns(columns...))
+	{{ $receiver }}.conflict = append({{ $receiver }}.conflict, builder.ConflictColumns(columns...))
 	return &{{ $upsertBulk }}{
 		create: {{ $receiver }},
 	}
@@ -321,9 +321,9 @@ type {{ $upsertBulk }} struct {
 //
 //	client.{{ $.Name }}.Create().
 //		OnConflict(
-//			sql.ResolveWithNewValues(),
+//			builder.ResolveWithNewValues(),
 {{- if $udfID }}
-//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//			builder.ResolveWith(func(u *builder.UpdateSet) {
 //				u.SetIgnore({{ $.Package }}.{{ $.ID.Constant }})
 //			}),
 {{- end }}
@@ -331,9 +331,9 @@ type {{ $upsertBulk }} struct {
 //		Exec(ctx)
 //
 func (u *{{ $upsertBulk }}) UpdateNewValues() *{{ $upsertBulk }} {
-	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, builder.ResolveWithNewValues())
 	{{- if or $udfID $.ImmutableFields }}
-		u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		u.create.conflict = append(u.create.conflict, builder.ResolveWith(func(s *builder.UpdateSet) {
 			for _, b := range u.create.builders {
 				{{- if $udfID }}
 					if _, exists := b.mutation.ID(); exists {
@@ -355,25 +355,25 @@ func (u *{{ $upsertBulk }}) UpdateNewValues() *{{ $upsertBulk }} {
 // Using this option is equivalent to using:
 //
 //	client.{{ $.Name }}.Create().
-//		OnConflict(sql.ResolveWithIgnore()).
+//		OnConflict(builder.ResolveWithIgnore()).
 //		Exec(ctx)
 //
 func (u *{{ $upsertBulk }}) Ignore() *{{ $upsertBulk }} {
-	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	u.create.conflict = append(u.create.conflict, builder.ResolveWithIgnore())
 	return u
 }
 
 // DoNothing configures the conflict_action to `DO NOTHING`.
 // Supported only by SQLite and PostgreSQL.
 func (u *{{ $upsertBulk }}) DoNothing() *{{ $upsertBulk }} {
-	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	u.create.conflict = append(u.create.conflict, builder.DoNothing())
 	return u
 }
 
 // Update allows overriding fields `UPDATE` values. See the {{ $builder }}.OnConflict
 // documentation for more info.
 func (u *{{ $upsertBulk }}) Update(set func(*{{ $upsertSet }})) *{{ $upsertBulk }} {
-	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+	u.create.conflict = append(u.create.conflict, builder.ResolveWith(func(update *builder.UpdateSet) {
 		set(&{{ $upsertSet }}{UpdateSet: update})
 	}))
 	return u

@@ -21,6 +21,7 @@ import (
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/builder"
 	"entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/entc/integration/migrate/entv1"
 	migratev1 "entgo.io/ent/entc/integration/migrate/entv1/migrate"
@@ -676,8 +677,8 @@ func CheckConstraint(t *testing.T, client *entv2.Client) {
 func NicknameSearch(t *testing.T, client *entv2.Client) {
 	ctx := context.Background()
 	names := client.User.Query().
-		Where(func(s *sql.Selector) {
-			s.Where(sql.P(func(b *sql.Builder) {
+		Where(func(s *builder.Selector) {
+			s.Where(builder.P(func(b *builder.Builder) {
 				b.WriteString("MATCH(").Ident(user.FieldNickname).WriteString(") AGAINST(").Arg("nick_bar | nick_foo").WriteString(")")
 			}))
 		}).

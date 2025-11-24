@@ -125,21 +125,21 @@ func ValidColumn(column string) bool {
 		{{- if $e.Unique }}
 			// {{ $e.OrderFieldName }} orders the results by {{ $e.Name }} field.
 			func {{ $e.OrderFieldName }}(field string, opts ...sql.OrderTermOption) OrderOption {
-				return func(s *sql.Selector) {
+				return func(s *builder.Selector) {
 					sqlgraph.OrderByNeighborTerms(s, new{{ pascal $e.Name }}Step(), sql.OrderByField(field, opts...))
 				}
 			}
 		{{- else }}
 			// {{ $e.OrderCountName }} orders the results by {{ $e.Name }} count.
 			func {{ $e.OrderCountName }}(opts ...sql.OrderTermOption) OrderOption {
-				return func(s *sql.Selector) {
+				return func(s *builder.Selector) {
 					sqlgraph.OrderByNeighborsCount(s, new{{ pascal $e.Name }}Step(), opts...)
 				}
 			}
 
 			// {{ $e.OrderTermsName }} orders the results by {{ $e.Name }} terms.
 			func {{ $e.OrderTermsName }}(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
-				return func(s *sql.Selector) {
+				return func(s *builder.Selector) {
 					sqlgraph.OrderByNeighborTerms(s, new{{ pascal $e.Name }}Step(), append([]sql.OrderTerm{term}, terms...)...)
 				}
 			}

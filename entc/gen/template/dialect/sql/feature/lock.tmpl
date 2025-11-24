@@ -21,11 +21,11 @@ in the LICENSE file in the root directory of this source tree.
 // ForUpdate locks the selected rows against concurrent updates, and prevent them from being
 // updated, deleted or "selected ... for update" by other sessions, until the transaction is
 // either committed or rolled-back.
-func ({{ $receiver }} *{{ $builder }}) ForUpdate(opts ...sql.LockOption) *{{ $builder }} {
+func ({{ $receiver }} *{{ $builder }}) ForUpdate(opts ...builder.LockOption) *{{ $builder }} {
     if {{ $receiver }}.driver.Dialect() == dialect.Postgres {
         {{ $receiver }}.Unique(false)
     }
-    {{ $receiver }}.modifiers = append({{ $receiver }}.modifiers, func(s *sql.Selector) {
+    {{ $receiver }}.modifiers = append({{ $receiver }}.modifiers, func(s *builder.Selector) {
         s.ForUpdate(opts...)
     })
     return {{ $receiver }}
@@ -34,11 +34,11 @@ func ({{ $receiver }} *{{ $builder }}) ForUpdate(opts ...sql.LockOption) *{{ $bu
 // ForShare behaves similarly to ForUpdate, except that it acquires a shared mode lock
 // on any rows that are read. Other sessions can read the rows, but cannot modify them
 // until your transaction commits.
-func ({{ $receiver }} *{{ $builder }}) ForShare(opts ...sql.LockOption) *{{ $builder }} {
+func ({{ $receiver }} *{{ $builder }}) ForShare(opts ...builder.LockOption) *{{ $builder }} {
     if {{ $receiver }}.driver.Dialect() == dialect.Postgres {
         {{ $receiver }}.Unique(false)
     }
-    {{ $receiver }}.modifiers = append({{ $receiver }}.modifiers, func(s *sql.Selector) {
+    {{ $receiver }}.modifiers = append({{ $receiver }}.modifiers, func(s *builder.Selector) {
         s.ForShare(opts...)
     })
     return {{ $receiver }}

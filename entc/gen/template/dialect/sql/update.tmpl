@@ -83,7 +83,7 @@ func ({{ $receiver }} *{{ $builder }}) sqlSave(ctx context.Context) (_node {{ if
 		{{- end }}
 	{{- end }}
 	if ps := {{ $mutation }}.predicates; len(ps) > 0 {
-		_spec.Predicate = func(selector *sql.Selector) {
+		_spec.Predicate = func(selector *builder.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
@@ -117,7 +117,7 @@ func ({{ $receiver }} *{{ $builder }}) sqlSave(ctx context.Context) (_node {{ if
 				{{- end }}
 				{{- if $f.SupportsMutationAppend }}
 					if value, ok := {{ $mutation }}.{{ $f.MutationAppended }}(); ok {
-						_spec.AddModifier(func(u *sql.UpdateBuilder) {
+						_spec.AddModifier(func(u *builder.UpdateBuilder) {
 							sqljson.Append(u, {{ $.Package }}.{{ $f.Constant }}, value)
 						})
 					}

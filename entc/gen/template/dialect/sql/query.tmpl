@@ -122,8 +122,8 @@ func ({{ $receiver }} *{{ $builder }}) sqlAll(ctx context.Context, hooks ...quer
 					init(node)
 				}
 			}
-			query.Where(func(s *sql.Selector) {
-				joinT := sql.Table({{ $.Package }}.{{ $e.TableConstant }})
+			query.Where(func(s *builder.Selector) {
+				joinT := builder.Table({{ $.Package }}.{{ $e.TableConstant }})
 				{{- with $tmpls := matchTemplate "dialect/sql/query/eagerloading/join/*" }}
 					{{- range $tmpl := $tmpls }}
 						{{- with extend $ "Edge" $e }}
@@ -134,7 +134,7 @@ func ({{ $receiver }} *{{ $builder }}) sqlAll(ctx context.Context, hooks ...quer
 				{{- $edgeid := print $e.Type.Package "." $e.Type.ID.Constant }}
 				{{- $fk1idx := 1 }}{{- $fk2idx := 0 }}{{ if $e.IsInverse }}{{ $fk1idx = 0 }}{{ $fk2idx = 1 }}{{ end }}
 				s.Join(joinT).On(s.C({{ $edgeid }}), joinT.C({{ $.Package }}.{{ $e.PKConstant }}[{{ $fk1idx }}]))
-				s.Where(sql.InValues(joinT.C({{ $.Package }}.{{ $e.PKConstant }}[{{ $fk2idx }}]), edgeIDs...))
+				s.Where(builder.InValues(joinT.C({{ $.Package }}.{{ $e.PKConstant }}[{{ $fk2idx }}]), edgeIDs...))
 				columns := s.SelectedColumns()
 				s.Select(joinT.C({{ $.Package }}.{{ $e.PKConstant }}[{{ $fk2idx }}]))
 				s.AppendSelect(columns...)
@@ -235,8 +235,8 @@ func ({{ $receiver }} *{{ $builder }}) sqlAll(ctx context.Context, hooks ...quer
 					query.ctx.AppendFieldOnce({{ $e.Type.Package }}.{{ $e.Ref.Field.Constant }})
 				}
 			{{- end }}
-			query.Where(predicate.{{ $e.Type.Name }}(func(s *sql.Selector) {
-				s.Where(sql.InValues(s.C({{ $.Package }}.{{ $e.ColumnConstant }}), fks...))
+			query.Where(predicate.{{ $e.Type.Name }}(func(s *builder.Selector) {
+				s.Where(builder.InValues(s.C({{ $.Package }}.{{ $e.ColumnConstant }}), fks...))
 			}))
 			neighbors, err := query.All(ctx)
 			if err != nil {
@@ -318,7 +318,7 @@ func ({{ $receiver }} *{{ $builder }}) querySpec() *sqlgraph.QuerySpec {
 		{{- end }}
 	}
 	if ps := {{ $receiver }}.predicates; len(ps) > 0 {
-		_spec.Predicate = func(selector *sql.Selector) {
+		_spec.Predicate = func(selector *builder.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
@@ -331,7 +331,7 @@ func ({{ $receiver }} *{{ $builder }}) querySpec() *sqlgraph.QuerySpec {
 		_spec.Offset = *offset
 	}
 	if ps := {{ $receiver }}.order; len(ps) > 0 {
-		_spec.Order = func(selector *sql.Selector) {
+		_spec.Order = func(selector *builder.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
@@ -355,9 +355,9 @@ func ({{ $receiver }} *{{ $builder }}) querySpec() *sqlgraph.QuerySpec {
 {{ $builder := pascal $.Scope.Builder }}
 {{ $receiver := $.Scope.Receiver }}
 
-func ({{ $receiver }} *{{ $builder }}) sqlQuery(ctx context.Context) *sql.Selector {
+func ({{ $receiver }} *{{ $builder }}) sqlQuery(ctx context.Context) *builder.Selector {
 	{{- $builderV := "builder" }}{{ if eq $.Package $builderV }}{{ $builderV = "builderC" }}{{ end }}
-	{{ $builderV }} := sql.Dialect({{ $receiver }}.driver.Dialect())
+	{{ $builderV }} := builder.Dialect({{ $receiver }}.driver.Dialect())
 	t1 := {{ $builderV }}.Table({{ $.Package }}.Table)
 	columns := {{ $receiver }}.ctx.Fields
 	if len(columns) == 0 {
@@ -371,7 +371,7 @@ func ({{ $receiver }} *{{ $builder }}) sqlQuery(ctx context.Context) *sql.Select
 	if {{ $receiver }}.ctx.Unique != nil && *{{ $receiver }}.ctx.Unique {
 		selector.Distinct()
 	}
-	{{- /* Allow mutating the sql.Selector by ent extensions or user templates.*/}}
+	{{- /* Allow mutating the builder.Selector by ent extensions or user templates.*/}}
 	{{- with $tmpls := matchTemplate "dialect/sql/query/selector/*" }}
 		{{- range $tmpl := $tmpls }}
 			{{- xtemplate $tmpl $ }}

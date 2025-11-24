@@ -10,7 +10,7 @@ import (
 	"reflect"
 	"testing"
 
-	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/builder"
 	"entgo.io/ent/entc/integration/template/ent"
 	"entgo.io/ent/entc/integration/template/ent/hook"
 	"entgo.io/ent/entc/integration/template/ent/migrate"
@@ -70,10 +70,10 @@ func TestCustomTemplate(t *testing.T) {
 
 	var v []struct{ ID, Owner int }
 	client.Pet.Query().
-		Modify(func(s *sql.Selector) {
-			t := sql.Table(user.Table)
+		Modify(func(s *builder.Selector) {
+			t := builder.Table(user.Table)
 			s.Join(t).On(s.C(pet.OwnerColumn), t.C(user.FieldID))
-			s.Select(s.C(pet.FieldID), sql.As(t.C(user.FieldID), "owner"))
+			s.Select(s.C(pet.FieldID), builder.As(t.C(user.FieldID), "owner"))
 		}).
 		Select().
 		ScanX(ctx, &v)
@@ -85,8 +85,8 @@ func TestCustomTemplate(t *testing.T) {
 		sum += age
 	}
 	got := client.Pet.Query().
-		Modify(func(s *sql.Selector) {
-			s.Select(sql.Sum(pet.FieldAge))
+		Modify(func(s *builder.Selector) {
+			s.Select(builder.Sum(pet.FieldAge))
 		}).
 		Select().
 		IntX(ctx)
