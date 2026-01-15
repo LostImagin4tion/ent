@@ -24,6 +24,7 @@ import (
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	"entgo.io/ent/schema/field"
+	"github.com/ydb-platform/ydb-go-sdk/v3"
 )
 
 // Atlas atlas migration engine.
@@ -626,6 +627,37 @@ func (a *Atlas) create(ctx context.Context, tables ...*Table) (err error) {
 	if len(plan.Changes) == 0 {
 		return nil
 	}
+
+	// YDB requires DDL operations to be executed outside of transactions.
+	if a.sqlDialect.Dialect() == dialect.YDB {
+		var applier Applier = ApplyFunc(
+			func(ctx context.Context, conn dialect.ExecQuerier, plan *migrate.Plan) error {
+				for _, c := range plan.Changes {
+					err := conn.Exec(
+						ydb.WithQueryMode(ctx, ydb.SchemeQueryMode),
+						c.Cmd,
+						c.Args,
+						nil,
+					)
+					if err != nil {
+						if c.Comment != "" {
+							err = fmt.Errorf("%s: %w", c.Comment, err)
+						}
+						return err
+					}
+				}
+				return nil
+			},
+		)
+		for i := len(a.applyHook) - 1; i >= 0; i-- {
+			applier = a.applyHook[i](applier)
+		}
+		if err := applier.Apply(ctx, a.sqlDialect, plan); err != nil {
+			return fmt.Errorf("sql/schema: %w", err)
+		}
+		return nil
+	}
+
 	// Open a transaction for backwards compatibility,
 	// even if the migration is not transactional.
 	tx, err := a.sqlDialect.Tx(ctx)
