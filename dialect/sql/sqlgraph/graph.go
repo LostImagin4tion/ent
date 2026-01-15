@@ -711,6 +711,8 @@ type (
 		//	}
 		//
 		OnConflict []sql.ConflictOption
+
+		RetryConfig RetryConfig
 	}
 
 	// BatchCreateSpec holds the information for creating
@@ -728,6 +730,8 @@ type (
 		//	}
 		//
 		OnConflict []sql.ConflictOption
+
+		RetryConfig RetryConfig
 	}
 )
 
@@ -748,16 +752,28 @@ func (u *CreateSpec) SetField(column string, t field.Type, value driver.Value) {
 // CreateNode applies the CreateSpec on the graph. The operation creates a new
 // record in the database, and connects it to other nodes specified in spec.Edges.
 func CreateNode(ctx context.Context, drv dialect.Driver, spec *CreateSpec) error {
-	gr := graph{tx: drv, builder: sql.Dialect(drv.Dialect())}
-	cr := &creator{CreateSpec: spec, graph: gr}
-	return cr.node(ctx, drv)
+	op := func(ctx context.Context, d dialect.Driver) error {
+		gr := graph{tx: d, builder: sql.Dialect(drv.Dialect())}
+		cr := &creator{CreateSpec: spec, graph: gr}
+		return cr.node(ctx, d)
+	}
+	if retry := getRetryExecutor(drv); retry != nil {
+		return retry.DoTx(ctx, op, spec.RetryConfig.Options...)
+	}
+	return op(ctx, drv)
 }
 
 // BatchCreate applies the BatchCreateSpec on the graph.
 func BatchCreate(ctx context.Context, drv dialect.Driver, spec *BatchCreateSpec) error {
-	gr := graph{tx: drv, builder: sql.Dialect(drv.Dialect())}
-	cr := &batchCreator{BatchCreateSpec: spec, graph: gr}
-	return cr.nodes(ctx, drv)
+	op := func(ctx context.Context, d dialect.Driver) error {
+		gr := graph{tx: d, builder: sql.Dialect(drv.Dialect())}
+		cr := &batchCreator{BatchCreateSpec: spec, graph: gr}
+		return cr.nodes(ctx, d)
+	}
+	if retry := getRetryExecutor(drv); retry != nil {
+		return retry.DoTx(ctx, op, spec.RetryConfig.Options...)
+	}
+	return op(ctx, drv)
 }
 
 type (
@@ -785,6 +801,8 @@ type (
 
 		ScanValues func(columns []string) ([]any, error)
 		Assign     func(columns []string, values []any) error
+
+		RetryConfig RetryConfig
 	}
 )
 
@@ -840,23 +858,47 @@ func (u *UpdateSpec) ClearField(column string, t field.Type) {
 
 // UpdateNode applies the UpdateSpec on one node in the graph.
 func UpdateNode(ctx context.Context, drv dialect.Driver, spec *UpdateSpec) error {
-	tx, err := drv.Tx(ctx)
-	if err != nil {
-		return err
+	op := func(ctx context.Context, d dialect.Driver) error {
+		tx, err := d.Tx(ctx)
+		if err != nil {
+			return err
+		}
+		gr := graph{tx: tx, builder: sql.Dialect(drv.Dialect())}
+		cr := &updater{UpdateSpec: spec, graph: gr}
+		if err := cr.node(ctx, tx); err != nil {
+			return rollback(tx, err)
+		}
+		return tx.Commit()
 	}
-	gr := graph{tx: tx, builder: sql.Dialect(drv.Dialect())}
-	cr := &updater{UpdateSpec: spec, graph: gr}
-	if err := cr.node(ctx, tx); err != nil {
-		return rollback(tx, err)
+	if retry := getRetryExecutor(drv); retry != nil {
+		return retry.DoTx(ctx, op, spec.RetryConfig.Options...)
 	}
-	return tx.Commit()
+	return op(ctx, drv)
 }
 
 // UpdateNodes applies the UpdateSpec on a set of nodes in the graph.
 func UpdateNodes(ctx context.Context, drv dialect.Driver, spec *UpdateSpec) (int, error) {
-	gr := graph{tx: drv, builder: sql.Dialect(drv.Dialect())}
-	cr := &updater{UpdateSpec: spec, graph: gr}
-	return cr.nodes(ctx, drv)
+	var affected int
+	op := func(ctx context.Context, d dialect.Driver) error {
+		gr := graph{tx: d, builder: sql.Dialect(drv.Dialect())}
+		cr := &updater{UpdateSpec: spec, graph: gr}
+		n, err := cr.nodes(ctx, d)
+		if err != nil {
+			return err
+		}
+		affected = n
+		return nil
+	}
+	if retry := getRetryExecutor(drv); retry != nil {
+		if err := retry.DoTx(ctx, op, spec.RetryConfig.Options...); err != nil {
+			return 0, err
+		}
+		return affected, nil
+	}
+	if err := op(ctx, drv); err != nil {
+		return 0, err
+	}
+	return affected, nil
 }
 
 // NotFoundError returns when trying to update an
@@ -873,8 +915,9 @@ func (e *NotFoundError) Error() string {
 // DeleteSpec holds the information for delete one
 // or more nodes in the graph.
 type DeleteSpec struct {
-	Node      *NodeSpec
-	Predicate func(*sql.Selector)
+	Node        *NodeSpec
+	Predicate   func(*sql.Selector)
+	RetryConfig RetryConfig
 }
 
 // NewDeleteSpec creates a new node deletion spec.
@@ -884,25 +927,39 @@ func NewDeleteSpec(table string, id *FieldSpec) *DeleteSpec {
 
 // DeleteNodes applies the DeleteSpec on the graph.
 func DeleteNodes(ctx context.Context, drv dialect.Driver, spec *DeleteSpec) (int, error) {
-	var (
-		res     sql.Result
-		builder = sql.Dialect(drv.Dialect())
-	)
-	selector := builder.Select().
-		From(builder.Table(spec.Node.Table).Schema(spec.Node.Schema)).
-		WithContext(ctx)
-	if pred := spec.Predicate; pred != nil {
-		pred(selector)
+	var affected int
+	op := func(ctx context.Context, d dialect.Driver) error {
+		var (
+			res     sql.Result
+			builder = sql.Dialect(drv.Dialect())
+		)
+		selector := builder.Select().
+			From(builder.Table(spec.Node.Table).Schema(spec.Node.Schema)).
+			WithContext(ctx)
+		if pred := spec.Predicate; pred != nil {
+			pred(selector)
+		}
+		query, args := builder.Delete(spec.Node.Table).Schema(spec.Node.Schema).FromSelect(selector).Query()
+		if err := d.Exec(ctx, query, args, &res); err != nil {
+			return err
+		}
+		n, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+		affected = int(n)
+		return nil
 	}
-	query, args := builder.Delete(spec.Node.Table).Schema(spec.Node.Schema).FromSelect(selector).Query()
-	if err := drv.Exec(ctx, query, args, &res); err != nil {
+	if retry := getRetryExecutor(drv); retry != nil {
+		if err := retry.DoTx(ctx, op, spec.RetryConfig.Options...); err != nil {
+			return 0, err
+		}
+		return affected, nil
+	}
+	if err := op(ctx, drv); err != nil {
 		return 0, err
 	}
-	affected, err := res.RowsAffected()
-	if err != nil {
-		return 0, err
-	}
-	return int(affected), nil
+	return affected, nil
 }
 
 // QuerySpec holds the information for querying
@@ -920,6 +977,8 @@ type QuerySpec struct {
 
 	ScanValues func(columns []string) ([]any, error)
 	Assign     func(columns []string, values []any) error
+
+	RetryConfig RetryConfig
 }
 
 // NewQuerySpec creates a new node query spec.
@@ -935,16 +994,40 @@ func NewQuerySpec(table string, columns []string, id *FieldSpec) *QuerySpec {
 
 // QueryNodes queries the nodes in the graph query and scans them to the given values.
 func QueryNodes(ctx context.Context, drv dialect.Driver, spec *QuerySpec) error {
-	builder := sql.Dialect(drv.Dialect())
-	qr := &query{graph: graph{builder: builder}, QuerySpec: spec}
-	return qr.nodes(ctx, drv)
+	op := func(ctx context.Context, d dialect.Driver) error {
+		builder := sql.Dialect(drv.Dialect())
+		qr := &query{graph: graph{builder: builder}, QuerySpec: spec}
+		return qr.nodes(ctx, d)
+	}
+	if retry := getRetryExecutor(drv); retry != nil {
+		return retry.Do(ctx, op, spec.RetryConfig.Options...)
+	}
+	return op(ctx, drv)
 }
 
 // CountNodes counts the nodes in the given graph query.
 func CountNodes(ctx context.Context, drv dialect.Driver, spec *QuerySpec) (int, error) {
-	builder := sql.Dialect(drv.Dialect())
-	qr := &query{graph: graph{builder: builder}, QuerySpec: spec}
-	return qr.count(ctx, drv)
+	var count int
+	op := func(ctx context.Context, d dialect.Driver) error {
+		builder := sql.Dialect(drv.Dialect())
+		qr := &query{graph: graph{builder: builder}, QuerySpec: spec}
+		n, err := qr.count(ctx, d)
+		if err != nil {
+			return err
+		}
+		count = n
+		return nil
+	}
+	if retry := getRetryExecutor(drv); retry != nil {
+		if err := retry.Do(ctx, op, spec.RetryConfig.Options...); err != nil {
+			return 0, err
+		}
+		return count, nil
+	}
+	if err := op(ctx, drv); err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // EdgeQuerySpec holds the information for querying
