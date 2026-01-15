@@ -1,0 +1,99 @@
+{{/*
+Copyright 2019-present Facebook Inc. All rights reserved.
+This source code is licensed under the Apache 2.0 license found
+in the LICENSE file in the root directory of this source tree.
+*/}}
+
+{{/* gotype: entgo.io/ent/entc/gen.Type */}}
+
+{{/* Additional fields for the create builder. */}}
+{{ define "dialect/sql/create/fields/additional/retryoptions" }}
+	retryConfig sqlgraph.RetryConfig
+{{- end }}
+
+{{/* Additional fields for the create_bulk builder. */}}
+{{ define "dialect/sql/create_bulk/fields/additional/retryoptions" }}
+	retryConfig sqlgraph.RetryConfig
+{{- end }}
+
+{{/* Additional fields for the update builder. */}}
+{{ define "dialect/sql/update/fields/additional/retryoptions" }}
+	retryConfig sqlgraph.RetryConfig
+{{- end }}
+
+{{/* Additional fields for the query builder. */}}
+{{ define "dialect/sql/query/fields/additional/retryoptions" }}
+	retryConfig sqlgraph.RetryConfig
+{{- end }}
+
+{{/* WithRetryOptions method for create builder. */}}
+{{ define "dialect/sql/create/additional/retryoptions" }}
+{{ $builder := pascal $.Scope.Builder }}
+{{ $receiver := $.Scope.Receiver }}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func ({{ $receiver }} *{{ $builder }}) WithRetryOptions(opts ...any) *{{ $builder }} {
+	{{ $receiver }}.retryConfig.Options = opts
+	return {{ $receiver }}
+}
+{{- end }}
+
+{{/* WithRetryOptions method for create_bulk builder. */}}
+{{ define "dialect/sql/create_bulk/additional/retryoptions" }}
+{{ $builder := pascal $.Scope.Builder }}
+{{ $receiver := $.Scope.Receiver }}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func ({{ $receiver }} *{{ $builder }}) WithRetryOptions(opts ...any) *{{ $builder }} {
+	{{ $receiver }}.retryConfig.Options = opts
+	return {{ $receiver }}
+}
+{{- end }}
+
+{{/* WithRetryOptions method for update builder. */}}
+{{ define "dialect/sql/update/additional/retryoptions" }}
+{{ $builder := pascal $.Scope.Builder }}
+{{ $receiver := $.Scope.Receiver }}
+
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func ({{ $receiver }} *{{ $builder }}) WithRetryOptions(opts ...any) *{{ $builder }} {
+	{{ $receiver }}.retryConfig.Options = opts
+	return {{ $receiver }}
+}
+{{- end }}
+
+{{/* WithRetryOptions method for query builder. */}}
+{{ define "dialect/sql/query/additional/retryoptions" }}
+{{ $builder := pascal $.Scope.Builder }}
+{{ $receiver := $.Scope.Receiver }}
+
+// WithRetryOptions sets the retry options for the query operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func ({{ $receiver }} *{{ $builder }}) WithRetryOptions(opts ...any) *{{ $builder }} {
+	{{ $receiver }}.retryConfig.Options = opts
+	return {{ $receiver }}
+}
+{{- end }}
+
+{{/* Pass retry options to CreateSpec. */}}
+{{ define "dialect/sql/create/spec/retryoptions" }}
+	_spec.RetryConfig = {{ $.Scope.Receiver }}.retryConfig
+{{- end }}
+
+{{/* Pass retry options to BatchCreateSpec. */}}
+{{ define "dialect/sql/create_bulk/spec/retryoptions" }}
+	spec.RetryConfig = {{ $.Scope.Receiver }}.retryConfig
+{{- end }}
+
+{{/* Pass retry options to UpdateSpec. */}}
+{{ define "dialect/sql/update/spec/retryoptions" }}
+	_spec.RetryConfig = {{ $.Scope.Receiver }}.retryConfig
+{{- end }}
+
+{{/* Pass retry options to QuerySpec. */}}
+{{ define "dialect/sql/query/spec/retryoptions" }}
+	_spec.RetryConfig = {{ $.Scope.Receiver }}.retryConfig
+{{- end }}
