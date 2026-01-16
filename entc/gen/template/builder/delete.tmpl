@@ -26,6 +26,11 @@ type {{ $builder }} struct {
 	config
 	hooks      []Hook
 	mutation   *{{ $.MutationName }}
+	{{- /* Additional fields to add to the builder. */}}
+	{{- $tmpl := printf "dialect/%s/delete/fields" $.Storage }}
+	{{- if hasTemplate $tmpl }}
+		{{- xtemplate $tmpl . }}
+	{{- end }}
 }
 
 // Where appends a list predicates to the {{ $builder }} builder.

@@ -34,4 +34,20 @@ func ({{ $receiver}} *{{ $builder }}) sqlExec(ctx context.Context) (int, error) 
 	return affected, err
 }
 
+{{- /* Allow adding methods to the delete builder by ent extensions or user templates.*/}}
+{{- with $tmpls := matchTemplate "dialect/sql/delete/additional/*" }}
+	{{- range $tmpl := $tmpls }}
+		{{- xtemplate $tmpl $ }}
+	{{- end }}
+{{- end }}
+
 {{ end }}
+
+{{/* Additional fields for the delete builder. */}}
+{{ define "dialect/sql/delete/fields" }}
+	{{- with $tmpls := matchTemplate "dialect/sql/delete/fields/additional/*" }}
+		{{- range $tmpl := $tmpls }}
+			{{- xtemplate $tmpl $ }}
+		{{- end }}
+	{{- end }}
+{{- end }}

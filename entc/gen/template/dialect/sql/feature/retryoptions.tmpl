@@ -26,6 +26,11 @@ in the LICENSE file in the root directory of this source tree.
 	retryConfig sqlgraph.RetryConfig
 {{- end }}
 
+{{/* Additional fields for the delete builder. */}}
+{{ define "dialect/sql/delete/fields/additional/retryoptions" }}
+	retryConfig sqlgraph.RetryConfig
+{{- end }}
+
 {{/* WithRetryOptions method for create builder. */}}
 {{ define "dialect/sql/create/additional/retryoptions" }}
 {{ $builder := pascal $.Scope.Builder }}
@@ -78,6 +83,19 @@ func ({{ $receiver }} *{{ $builder }}) WithRetryOptions(opts ...any) *{{ $builde
 }
 {{- end }}
 
+{{/* WithRetryOptions method for delete builder. */}}
+{{ define "dialect/sql/delete/additional/retryoptions" }}
+{{ $builder := pascal $.Scope.Builder }}
+{{ $receiver := $.Scope.Receiver }}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func ({{ $receiver }} *{{ $builder }}) WithRetryOptions(opts ...any) *{{ $builder }} {
+	{{ $receiver }}.retryConfig.Options = opts
+	return {{ $receiver }}
+}
+{{- end }}
+
 {{/* Pass retry options to CreateSpec. */}}
 {{ define "dialect/sql/create/spec/retryoptions" }}
 	_spec.RetryConfig = {{ $.Scope.Receiver }}.retryConfig
@@ -95,5 +113,10 @@ func ({{ $receiver }} *{{ $builder }}) WithRetryOptions(opts ...any) *{{ $builde
 
 {{/* Pass retry options to QuerySpec. */}}
 {{ define "dialect/sql/query/spec/retryoptions" }}
+	_spec.RetryConfig = {{ $.Scope.Receiver }}.retryConfig
+{{- end }}
+
+{{/* Pass retry options to DeleteSpec. */}}
+{{ define "dialect/sql/delete/spec/retryoptions" }}
 	_spec.RetryConfig = {{ $.Scope.Receiver }}.retryConfig
 {{- end }}
