@@ -297,6 +297,7 @@ func HasNeighborsWith(q *sql.Selector, s *Step, pred func(*sql.Selector)) {
 		pred(matches)
 		join.FromSelect(matches)
 		q.Where(sql.In(q.C(s.From.Column), join))
+
 	case s.FromEdgeOwner():
 		to := builder.Table(s.To.Table).Schema(s.To.Schema)
 		// Avoid ambiguity in case both source
@@ -312,17 +313,28 @@ func HasNeighborsWith(q *sql.Selector, s *Step, pred func(*sql.Selector)) {
 				to.As(fmt.Sprintf("%s_edge_%d", s.To.Table, i))
 			}
 		}
-		matches := builder.Select(to.C(s.To.Column)).
-			From(to)
-		matches.WithContext(q.Context())
-		matches.Where(
-			sql.ColumnsEQ(
-				q.C(s.Edge.Columns[0]),
-				to.C(s.To.Column),
-			),
-		)
-		pred(matches)
-		q.Where(sql.Exists(matches))
+
+		// YDB doesn't support correlated EXISTS subqueries.
+		// Use IN subquery instead for YDB dialect.
+		if q.Dialect() == dialect.YDB {
+			matches := builder.Select(to.C(s.To.Column)).From(to)
+			matches.WithContext(q.Context())
+			pred(matches)
+			q.Where(sql.In(q.C(s.Edge.Columns[0]), matches))
+		} else {
+			matches := builder.Select(to.C(s.To.Column)).
+				From(to)
+			matches.WithContext(q.Context())
+			matches.Where(
+				sql.ColumnsEQ(
+					q.C(s.Edge.Columns[0]),
+					to.C(s.To.Column),
+				),
+			)
+			pred(matches)
+			q.Where(sql.Exists(matches))
+		}
+
 	case s.ToEdgeOwner():
 		to := builder.Table(s.Edge.Table).Schema(s.Edge.Schema)
 		// Avoid ambiguity in case both source
@@ -338,17 +350,27 @@ func HasNeighborsWith(q *sql.Selector, s *Step, pred func(*sql.Selector)) {
 				to.As(fmt.Sprintf("%s_edge_%d", s.Edge.Table, i))
 			}
 		}
-		matches := builder.Select(to.C(s.Edge.Columns[0])).
-			From(to)
-		matches.WithContext(q.Context())
-		matches.Where(
-			sql.ColumnsEQ(
-				q.C(s.From.Column),
-				to.C(s.Edge.Columns[0]),
-			),
-		)
-		pred(matches)
-		q.Where(sql.Exists(matches))
+		
+		// YDB doesn't support correlated EXISTS subqueries.
+		// Use IN subquery instead for YDB dialect.
+		if q.Dialect() == dialect.YDB {
+			matches := builder.Select(to.C(s.Edge.Columns[0])).From(to)
+			matches.WithContext(q.Context())
+			pred(matches)
+			q.Where(sql.In(q.C(s.From.Column), matches))
+		} else {
+			matches := builder.Select(to.C(s.Edge.Columns[0])).
+				From(to)
+			matches.WithContext(q.Context())
+			matches.Where(
+				sql.ColumnsEQ(
+					q.C(s.From.Column),
+					to.C(s.Edge.Columns[0]),
+				),
+			)
+			pred(matches)
+			q.Where(sql.Exists(matches))
+		}
 	}
 }
 
