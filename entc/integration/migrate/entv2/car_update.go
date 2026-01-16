@@ -22,8 +22,9 @@ import (
 // CarUpdate is the builder for updating Car entities.
 type CarUpdate struct {
 	config
-	hooks    []Hook
-	mutation *CarMutation
+	hooks       []Hook
+	mutation    *CarMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the CarUpdate builder.
@@ -109,6 +110,13 @@ func (_u *CarUpdate) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *CarUpdate) WithRetryOptions(opts ...any) *CarUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *CarUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -156,6 +164,7 @@ func (_u *CarUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{car.Label}
@@ -171,9 +180,10 @@ func (_u *CarUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // CarUpdateOne is the builder for updating a single Car entity.
 type CarUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *CarMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *CarMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetName sets the "name" field.
@@ -266,6 +276,13 @@ func (_u *CarUpdateOne) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *CarUpdateOne) WithRetryOptions(opts ...any) *CarUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *CarUpdateOne) sqlSave(ctx context.Context) (_node *Car, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -330,6 +347,7 @@ func (_u *CarUpdateOne) sqlSave(ctx context.Context) (_node *Car, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Car{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

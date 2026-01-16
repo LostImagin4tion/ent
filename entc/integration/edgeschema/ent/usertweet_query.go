@@ -24,12 +24,13 @@ import (
 // UserTweetQuery is the builder for querying UserTweet entities.
 type UserTweetQuery struct {
 	config
-	ctx        *QueryContext
-	order      []usertweet.OrderOption
-	inters     []Interceptor
-	predicates []predicate.UserTweet
-	withUser   *UserQuery
-	withTweet  *TweetQuery
+	ctx         *QueryContext
+	order       []usertweet.OrderOption
+	inters      []Interceptor
+	predicates  []predicate.UserTweet
+	withUser    *UserQuery
+	withTweet   *TweetQuery
+	retryConfig sqlgraph.RetryConfig
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -424,6 +425,7 @@ func (_q *UserTweetQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Us
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	_spec.RetryConfig = _q.retryConfig
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -509,6 +511,7 @@ func (_q *UserTweetQuery) loadTweet(ctx context.Context, query *TweetQuery, node
 
 func (_q *UserTweetQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
+	_spec.RetryConfig = _q.retryConfig
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
 		_spec.Unique = _q.ctx.Unique != nil && *_q.ctx.Unique
@@ -592,6 +595,13 @@ func (_q *UserTweetQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// WithRetryOptions sets the retry options for the query operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_q *UserTweetQuery) WithRetryOptions(opts ...any) *UserTweetQuery {
+	_q.retryConfig.Options = opts
+	return _q
 }
 
 // UserTweetGroupBy is the group-by builder for UserTweet entities.

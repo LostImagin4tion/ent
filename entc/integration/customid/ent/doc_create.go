@@ -22,9 +22,10 @@ import (
 // DocCreate is the builder for creating a Doc entity.
 type DocCreate struct {
 	config
-	mutation *DocMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *DocMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // SetText sets the "text" field.
@@ -183,6 +184,7 @@ func (_c *DocCreate) createSpec() (*Doc, *sqlgraph.CreateSpec) {
 		_node = &Doc{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(doc.Table, sqlgraph.NewFieldSpec(doc.FieldID, field.TypeString))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
@@ -242,6 +244,13 @@ func (_c *DocCreate) createSpec() (*Doc, *sqlgraph.CreateSpec) {
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *DocCreate) WithRetryOptions(opts ...any) *DocCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -421,9 +430,10 @@ func (u *DocUpsertOne) IDX(ctx context.Context) schema.DocID {
 // DocCreateBulk is the builder for creating many Doc entities in bulk.
 type DocCreateBulk struct {
 	config
-	err      error
-	builders []*DocCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*DocCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the Doc entities in the database.
@@ -453,6 +463,7 @@ func (_c *DocCreateBulk) Save(ctx context.Context) ([]*Doc, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -502,6 +513,13 @@ func (_c *DocCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *DocCreateBulk) WithRetryOptions(opts ...any) *DocCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

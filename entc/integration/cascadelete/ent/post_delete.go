@@ -19,8 +19,9 @@ import (
 // PostDelete is the builder for deleting a Post entity.
 type PostDelete struct {
 	config
-	hooks    []Hook
-	mutation *PostMutation
+	hooks       []Hook
+	mutation    *PostMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the PostDelete builder.
@@ -45,6 +46,7 @@ func (_d *PostDelete) ExecX(ctx context.Context) int {
 
 func (_d *PostDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(post.Table, sqlgraph.NewFieldSpec(post.FieldID, field.TypeInt))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *PostDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *PostDelete) WithRetryOptions(opts ...any) *PostDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // PostDeleteOne is the builder for deleting a single Post entity.

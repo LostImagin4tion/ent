@@ -24,8 +24,9 @@ import (
 // UserGroupUpdate is the builder for updating UserGroup entities.
 type UserGroupUpdate struct {
 	config
-	hooks    []Hook
-	mutation *UserGroupMutation
+	hooks       []Hook
+	mutation    *UserGroupMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the UserGroupUpdate builder.
@@ -141,6 +142,13 @@ func (_u *UserGroupUpdate) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *UserGroupUpdate) WithRetryOptions(opts ...any) *UserGroupUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *UserGroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -214,6 +222,7 @@ func (_u *UserGroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{usergroup.Label}
@@ -229,9 +238,10 @@ func (_u *UserGroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // UserGroupUpdateOne is the builder for updating a single UserGroup entity.
 type UserGroupUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *UserGroupMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *UserGroupMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetJoinedAt sets the "joined_at" field.
@@ -354,6 +364,13 @@ func (_u *UserGroupUpdateOne) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *UserGroupUpdateOne) WithRetryOptions(opts ...any) *UserGroupUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *UserGroupUpdateOne) sqlSave(ctx context.Context) (_node *UserGroup, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -444,6 +461,7 @@ func (_u *UserGroupUpdateOne) sqlSave(ctx context.Context) (_node *UserGroup, er
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &UserGroup{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

@@ -21,8 +21,9 @@ import (
 // RevisionUpdate is the builder for updating Revision entities.
 type RevisionUpdate struct {
 	config
-	hooks    []Hook
-	mutation *RevisionMutation
+	hooks       []Hook
+	mutation    *RevisionMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the RevisionUpdate builder.
@@ -63,6 +64,13 @@ func (_u *RevisionUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *RevisionUpdate) WithRetryOptions(opts ...any) *RevisionUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *RevisionUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(revision.Table, revision.Columns, sqlgraph.NewFieldSpec(revision.FieldID, field.TypeString))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -72,6 +80,7 @@ func (_u *RevisionUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			}
 		}
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{revision.Label}
@@ -87,9 +96,10 @@ func (_u *RevisionUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // RevisionUpdateOne is the builder for updating a single Revision entity.
 type RevisionUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *RevisionMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *RevisionMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Mutation returns the RevisionMutation object of the builder.
@@ -137,6 +147,13 @@ func (_u *RevisionUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *RevisionUpdateOne) WithRetryOptions(opts ...any) *RevisionUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *RevisionUpdateOne) sqlSave(ctx context.Context) (_node *Revision, err error) {
 	_spec := sqlgraph.NewUpdateSpec(revision.Table, revision.Columns, sqlgraph.NewFieldSpec(revision.FieldID, field.TypeString))
 	id, ok := _u.mutation.ID()
@@ -163,6 +180,7 @@ func (_u *RevisionUpdateOne) sqlSave(ctx context.Context) (_node *Revision, err 
 			}
 		}
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Revision{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

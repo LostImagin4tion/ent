@@ -19,8 +19,9 @@ import (
 // RelationshipInfoDelete is the builder for deleting a RelationshipInfo entity.
 type RelationshipInfoDelete struct {
 	config
-	hooks    []Hook
-	mutation *RelationshipInfoMutation
+	hooks       []Hook
+	mutation    *RelationshipInfoMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the RelationshipInfoDelete builder.
@@ -45,6 +46,7 @@ func (_d *RelationshipInfoDelete) ExecX(ctx context.Context) int {
 
 func (_d *RelationshipInfoDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(relationshipinfo.Table, sqlgraph.NewFieldSpec(relationshipinfo.FieldID, field.TypeInt))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *RelationshipInfoDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *RelationshipInfoDelete) WithRetryOptions(opts ...any) *RelationshipInfoDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // RelationshipInfoDeleteOne is the builder for deleting a single RelationshipInfo entity.

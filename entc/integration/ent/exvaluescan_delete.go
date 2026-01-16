@@ -19,8 +19,9 @@ import (
 // ExValueScanDelete is the builder for deleting a ExValueScan entity.
 type ExValueScanDelete struct {
 	config
-	hooks    []Hook
-	mutation *ExValueScanMutation
+	hooks       []Hook
+	mutation    *ExValueScanMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the ExValueScanDelete builder.
@@ -45,6 +46,7 @@ func (_d *ExValueScanDelete) ExecX(ctx context.Context) int {
 
 func (_d *ExValueScanDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(exvaluescan.Table, sqlgraph.NewFieldSpec(exvaluescan.FieldID, field.TypeInt))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *ExValueScanDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *ExValueScanDelete) WithRetryOptions(opts ...any) *ExValueScanDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // ExValueScanDeleteOne is the builder for deleting a single ExValueScan entity.

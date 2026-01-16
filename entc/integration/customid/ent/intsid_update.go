@@ -22,8 +22,9 @@ import (
 // IntSIDUpdate is the builder for updating IntSID entities.
 type IntSIDUpdate struct {
 	config
-	hooks    []Hook
-	mutation *IntSIDMutation
+	hooks       []Hook
+	mutation    *IntSIDMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the IntSIDUpdate builder.
@@ -125,6 +126,13 @@ func (_u *IntSIDUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *IntSIDUpdate) WithRetryOptions(opts ...any) *IntSIDUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *IntSIDUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(intsid.Table, intsid.Columns, sqlgraph.NewFieldSpec(intsid.FieldID, field.TypeInt64))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -208,6 +216,7 @@ func (_u *IntSIDUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{intsid.Label}
@@ -223,9 +232,10 @@ func (_u *IntSIDUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // IntSIDUpdateOne is the builder for updating a single IntSID entity.
 type IntSIDUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *IntSIDMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *IntSIDMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetParentID sets the "parent" edge to the IntSID entity by ID.
@@ -334,6 +344,13 @@ func (_u *IntSIDUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *IntSIDUpdateOne) WithRetryOptions(opts ...any) *IntSIDUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *IntSIDUpdateOne) sqlSave(ctx context.Context) (_node *IntSID, err error) {
 	_spec := sqlgraph.NewUpdateSpec(intsid.Table, intsid.Columns, sqlgraph.NewFieldSpec(intsid.FieldID, field.TypeInt64))
 	id, ok := _u.mutation.ID()
@@ -434,6 +451,7 @@ func (_u *IntSIDUpdateOne) sqlSave(ctx context.Context) (_node *IntSID, err erro
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &IntSID{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

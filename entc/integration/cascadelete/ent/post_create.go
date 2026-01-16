@@ -21,8 +21,9 @@ import (
 // PostCreate is the builder for creating a Post entity.
 type PostCreate struct {
 	config
-	mutation *PostMutation
-	hooks    []Hook
+	mutation    *PostMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetText sets the "text" field.
@@ -145,6 +146,7 @@ func (_c *PostCreate) createSpec() (*Post, *sqlgraph.CreateSpec) {
 		_node = &Post{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(post.Table, sqlgraph.NewFieldSpec(post.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	if value, ok := _c.mutation.Text(); ok {
 		_spec.SetField(post.FieldText, field.TypeString, value)
 		_node.Text = value
@@ -185,11 +187,19 @@ func (_c *PostCreate) createSpec() (*Post, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *PostCreate) WithRetryOptions(opts ...any) *PostCreate {
+	_c.retryConfig.Options = opts
+	return _c
+}
+
 // PostCreateBulk is the builder for creating many Post entities in bulk.
 type PostCreateBulk struct {
 	config
-	err      error
-	builders []*PostCreate
+	err         error
+	builders    []*PostCreate
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Save creates the Post entities in the database.
@@ -219,6 +229,7 @@ func (_c *PostCreateBulk) Save(ctx context.Context) ([]*Post, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -271,4 +282,11 @@ func (_c *PostCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *PostCreateBulk) WithRetryOptions(opts ...any) *PostCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }

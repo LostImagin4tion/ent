@@ -23,9 +23,10 @@ import (
 // DeviceCreate is the builder for creating a Device entity.
 type DeviceCreate struct {
 	config
-	mutation *DeviceMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *DeviceMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // SetID sets the "id" field.
@@ -155,6 +156,7 @@ func (_c *DeviceCreate) createSpec() (*Device, *sqlgraph.CreateSpec) {
 		_node = &Device{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(device.Table, sqlgraph.NewFieldSpec(device.FieldID, field.TypeBytes))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
@@ -194,6 +196,13 @@ func (_c *DeviceCreate) createSpec() (*Device, *sqlgraph.CreateSpec) {
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *DeviceCreate) WithRetryOptions(opts ...any) *DeviceCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -328,9 +337,10 @@ func (u *DeviceUpsertOne) IDX(ctx context.Context) schema.ID {
 // DeviceCreateBulk is the builder for creating many Device entities in bulk.
 type DeviceCreateBulk struct {
 	config
-	err      error
-	builders []*DeviceCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*DeviceCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the Device entities in the database.
@@ -360,6 +370,7 @@ func (_c *DeviceCreateBulk) Save(ctx context.Context) ([]*Device, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -409,6 +420,13 @@ func (_c *DeviceCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *DeviceCreateBulk) WithRetryOptions(opts ...any) *DeviceCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

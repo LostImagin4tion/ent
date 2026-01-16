@@ -22,8 +22,9 @@ import (
 // FriendshipUpdate is the builder for updating Friendship entities.
 type FriendshipUpdate struct {
 	config
-	hooks    []Hook
-	mutation *FriendshipMutation
+	hooks       []Hook
+	mutation    *FriendshipMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the FriendshipUpdate builder.
@@ -110,6 +111,13 @@ func (_u *FriendshipUpdate) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *FriendshipUpdate) WithRetryOptions(opts ...any) *FriendshipUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *FriendshipUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -131,6 +139,7 @@ func (_u *FriendshipUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(friendship.FieldCreatedAt, field.TypeTime, value)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{friendship.Label}
@@ -146,9 +155,10 @@ func (_u *FriendshipUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 // FriendshipUpdateOne is the builder for updating a single Friendship entity.
 type FriendshipUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *FriendshipMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *FriendshipMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetWeight sets the "weight" field.
@@ -242,6 +252,13 @@ func (_u *FriendshipUpdateOne) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *FriendshipUpdateOne) WithRetryOptions(opts ...any) *FriendshipUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *FriendshipUpdateOne) sqlSave(ctx context.Context) (_node *Friendship, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -280,6 +297,7 @@ func (_u *FriendshipUpdateOne) sqlSave(ctx context.Context) (_node *Friendship, 
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(friendship.FieldCreatedAt, field.TypeTime, value)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Friendship{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

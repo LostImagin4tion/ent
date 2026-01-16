@@ -26,9 +26,10 @@ import (
 // FieldTypeCreate is the builder for creating a FieldType entity.
 type FieldTypeCreate struct {
 	config
-	mutation *FieldTypeMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *FieldTypeMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // SetInt sets the "int" field.
@@ -973,6 +974,7 @@ func (_c *FieldTypeCreate) createSpec() (*FieldType, *sqlgraph.CreateSpec) {
 		_node = &FieldType{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(fieldtype.Table, sqlgraph.NewFieldSpec(fieldtype.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	if value, ok := _c.mutation.Int(); ok {
 		_spec.SetField(fieldtype.FieldInt, field.TypeInt, value)
@@ -1235,6 +1237,13 @@ func (_c *FieldTypeCreate) createSpec() (*FieldType, *sqlgraph.CreateSpec) {
 		_node.PasswordOther = value
 	}
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *FieldTypeCreate) WithRetryOptions(opts ...any) *FieldTypeCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -4170,9 +4179,10 @@ func (u *FieldTypeUpsertOne) IDX(ctx context.Context) int {
 // FieldTypeCreateBulk is the builder for creating many FieldType entities in bulk.
 type FieldTypeCreateBulk struct {
 	config
-	err      error
-	builders []*FieldTypeCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*FieldTypeCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the FieldType entities in the database.
@@ -4202,6 +4212,7 @@ func (_c *FieldTypeCreateBulk) Save(ctx context.Context) ([]*FieldType, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -4255,6 +4266,13 @@ func (_c *FieldTypeCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *FieldTypeCreateBulk) WithRetryOptions(opts ...any) *FieldTypeCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

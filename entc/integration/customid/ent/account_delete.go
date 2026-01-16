@@ -19,8 +19,9 @@ import (
 // AccountDelete is the builder for deleting a Account entity.
 type AccountDelete struct {
 	config
-	hooks    []Hook
-	mutation *AccountMutation
+	hooks       []Hook
+	mutation    *AccountMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the AccountDelete builder.
@@ -45,6 +46,7 @@ func (_d *AccountDelete) ExecX(ctx context.Context) int {
 
 func (_d *AccountDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(account.Table, sqlgraph.NewFieldSpec(account.FieldID, field.TypeOther))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *AccountDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *AccountDelete) WithRetryOptions(opts ...any) *AccountDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // AccountDeleteOne is the builder for deleting a single Account entity.

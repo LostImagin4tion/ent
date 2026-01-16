@@ -22,8 +22,9 @@ import (
 // BlobUpdate is the builder for updating Blob entities.
 type BlobUpdate struct {
 	config
-	hooks    []Hook
-	mutation *BlobMutation
+	hooks       []Hook
+	mutation    *BlobMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the BlobUpdate builder.
@@ -160,6 +161,13 @@ func (_u *BlobUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *BlobUpdate) WithRetryOptions(opts ...any) *BlobUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *BlobUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(blob.Table, blob.Columns, sqlgraph.NewFieldSpec(blob.FieldID, field.TypeUUID))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -264,6 +272,7 @@ func (_u *BlobUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{blob.Label}
@@ -279,9 +288,10 @@ func (_u *BlobUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // BlobUpdateOne is the builder for updating a single Blob entity.
 type BlobUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *BlobMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *BlobMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetUUID sets the "uuid" field.
@@ -425,6 +435,13 @@ func (_u *BlobUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *BlobUpdateOne) WithRetryOptions(opts ...any) *BlobUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *BlobUpdateOne) sqlSave(ctx context.Context) (_node *Blob, err error) {
 	_spec := sqlgraph.NewUpdateSpec(blob.Table, blob.Columns, sqlgraph.NewFieldSpec(blob.FieldID, field.TypeUUID))
 	id, ok := _u.mutation.ID()
@@ -546,6 +563,7 @@ func (_u *BlobUpdateOne) sqlSave(ctx context.Context) (_node *Blob, err error) {
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Blob{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

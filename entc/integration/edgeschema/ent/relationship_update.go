@@ -23,8 +23,9 @@ import (
 // RelationshipUpdate is the builder for updating Relationship entities.
 type RelationshipUpdate struct {
 	config
-	hooks    []Hook
-	mutation *RelationshipMutation
+	hooks       []Hook
+	mutation    *RelationshipMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the RelationshipUpdate builder.
@@ -178,6 +179,13 @@ func (_u *RelationshipUpdate) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *RelationshipUpdate) WithRetryOptions(opts ...any) *RelationshipUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *RelationshipUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -283,6 +291,7 @@ func (_u *RelationshipUpdate) sqlSave(ctx context.Context) (_node int, err error
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{relationship.Label}
@@ -298,9 +307,10 @@ func (_u *RelationshipUpdate) sqlSave(ctx context.Context) (_node int, err error
 // RelationshipUpdateOne is the builder for updating a single Relationship entity.
 type RelationshipUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *RelationshipMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *RelationshipMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetWeight sets the "weight" field.
@@ -461,6 +471,13 @@ func (_u *RelationshipUpdateOne) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *RelationshipUpdateOne) WithRetryOptions(opts ...any) *RelationshipUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *RelationshipUpdateOne) sqlSave(ctx context.Context) (_node *Relationship, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -585,6 +602,7 @@ func (_u *RelationshipUpdateOne) sqlSave(ctx context.Context) (_node *Relationsh
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Relationship{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

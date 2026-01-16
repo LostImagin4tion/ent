@@ -19,8 +19,9 @@ import (
 // AttachedFileDelete is the builder for deleting a AttachedFile entity.
 type AttachedFileDelete struct {
 	config
-	hooks    []Hook
-	mutation *AttachedFileMutation
+	hooks       []Hook
+	mutation    *AttachedFileMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the AttachedFileDelete builder.
@@ -45,6 +46,7 @@ func (_d *AttachedFileDelete) ExecX(ctx context.Context) int {
 
 func (_d *AttachedFileDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(attachedfile.Table, sqlgraph.NewFieldSpec(attachedfile.FieldID, field.TypeInt))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *AttachedFileDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *AttachedFileDelete) WithRetryOptions(opts ...any) *AttachedFileDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // AttachedFileDeleteOne is the builder for deleting a single AttachedFile entity.

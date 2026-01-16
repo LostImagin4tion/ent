@@ -23,8 +23,9 @@ import (
 // DeviceUpdate is the builder for updating Device entities.
 type DeviceUpdate struct {
 	config
-	hooks    []Hook
-	mutation *DeviceMutation
+	hooks       []Hook
+	mutation    *DeviceMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the DeviceUpdate builder.
@@ -126,6 +127,13 @@ func (_u *DeviceUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *DeviceUpdate) WithRetryOptions(opts ...any) *DeviceUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *DeviceUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(device.Table, device.Columns, sqlgraph.NewFieldSpec(device.FieldID, field.TypeBytes))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -209,6 +217,7 @@ func (_u *DeviceUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{device.Label}
@@ -224,9 +233,10 @@ func (_u *DeviceUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // DeviceUpdateOne is the builder for updating a single Device entity.
 type DeviceUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *DeviceMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *DeviceMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetActiveSessionID sets the "active_session" edge to the Session entity by ID.
@@ -335,6 +345,13 @@ func (_u *DeviceUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *DeviceUpdateOne) WithRetryOptions(opts ...any) *DeviceUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *DeviceUpdateOne) sqlSave(ctx context.Context) (_node *Device, err error) {
 	_spec := sqlgraph.NewUpdateSpec(device.Table, device.Columns, sqlgraph.NewFieldSpec(device.FieldID, field.TypeBytes))
 	id, ok := _u.mutation.ID()
@@ -435,6 +452,7 @@ func (_u *DeviceUpdateOne) sqlSave(ctx context.Context) (_node *Device, err erro
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Device{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

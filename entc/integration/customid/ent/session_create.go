@@ -23,9 +23,10 @@ import (
 // SessionCreate is the builder for creating a Session entity.
 type SessionCreate struct {
 	config
-	mutation *SessionMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *SessionMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // SetID sets the "id" field.
@@ -140,6 +141,7 @@ func (_c *SessionCreate) createSpec() (*Session, *sqlgraph.CreateSpec) {
 		_node = &Session{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(session.Table, sqlgraph.NewFieldSpec(session.FieldID, field.TypeBytes))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
@@ -163,6 +165,13 @@ func (_c *SessionCreate) createSpec() (*Session, *sqlgraph.CreateSpec) {
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *SessionCreate) WithRetryOptions(opts ...any) *SessionCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -297,9 +306,10 @@ func (u *SessionUpsertOne) IDX(ctx context.Context) schema.ID {
 // SessionCreateBulk is the builder for creating many Session entities in bulk.
 type SessionCreateBulk struct {
 	config
-	err      error
-	builders []*SessionCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*SessionCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the Session entities in the database.
@@ -329,6 +339,7 @@ func (_c *SessionCreateBulk) Save(ctx context.Context) ([]*Session, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -378,6 +389,13 @@ func (_c *SessionCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *SessionCreateBulk) WithRetryOptions(opts ...any) *SessionCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

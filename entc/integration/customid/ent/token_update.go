@@ -23,8 +23,9 @@ import (
 // TokenUpdate is the builder for updating Token entities.
 type TokenUpdate struct {
 	config
-	hooks    []Hook
-	mutation *TokenMutation
+	hooks       []Hook
+	mutation    *TokenMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the TokenUpdate builder.
@@ -109,6 +110,13 @@ func (_u *TokenUpdate) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *TokenUpdate) WithRetryOptions(opts ...any) *TokenUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *TokenUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -153,6 +161,7 @@ func (_u *TokenUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{token.Label}
@@ -168,9 +177,10 @@ func (_u *TokenUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // TokenUpdateOne is the builder for updating a single Token entity.
 type TokenUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *TokenMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *TokenMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetBody sets the "body" field.
@@ -262,6 +272,13 @@ func (_u *TokenUpdateOne) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *TokenUpdateOne) WithRetryOptions(opts ...any) *TokenUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *TokenUpdateOne) sqlSave(ctx context.Context) (_node *Token, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -323,6 +340,7 @@ func (_u *TokenUpdateOne) sqlSave(ctx context.Context) (_node *Token, err error)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Token{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

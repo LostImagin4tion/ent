@@ -22,9 +22,10 @@ import (
 // TaskUpdate is the builder for updating Task entities.
 type TaskUpdate struct {
 	config
-	hooks     []Hook
-	mutation  *TaskMutation
-	modifiers []func(*sql.UpdateBuilder)
+	hooks       []Hook
+	mutation    *TaskMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the TaskUpdate builder.
@@ -227,6 +228,13 @@ func (_u *TaskUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *TaskUpdat
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *TaskUpdate) WithRetryOptions(opts ...any) *TaskUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *TaskUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -285,6 +293,7 @@ func (_u *TaskUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		_spec.SetField(enttask.FieldOp, field.TypeString, value)
 	}
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{enttask.Label}
@@ -300,10 +309,11 @@ func (_u *TaskUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // TaskUpdateOne is the builder for updating a single Task entity.
 type TaskUpdateOne struct {
 	config
-	fields    []string
-	hooks     []Hook
-	mutation  *TaskMutation
-	modifiers []func(*sql.UpdateBuilder)
+	fields      []string
+	hooks       []Hook
+	mutation    *TaskMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetPriority sets the "priority" field.
@@ -513,6 +523,13 @@ func (_u *TaskUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *TaskUp
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *TaskUpdateOne) WithRetryOptions(opts ...any) *TaskUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *TaskUpdateOne) sqlSave(ctx context.Context) (_node *Task, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -588,6 +605,7 @@ func (_u *TaskUpdateOne) sqlSave(ctx context.Context) (_node *Task, err error) {
 		_spec.SetField(enttask.FieldOp, field.TypeString, value)
 	}
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Task{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

@@ -24,8 +24,9 @@ import (
 // TweetLikeUpdate is the builder for updating TweetLike entities.
 type TweetLikeUpdate struct {
 	config
-	hooks    []Hook
-	mutation *TweetLikeMutation
+	hooks       []Hook
+	mutation    *TweetLikeMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the TweetLikeUpdate builder.
@@ -141,6 +142,13 @@ func (_u *TweetLikeUpdate) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *TweetLikeUpdate) WithRetryOptions(opts ...any) *TweetLikeUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *TweetLikeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -214,6 +222,7 @@ func (_u *TweetLikeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{tweetlike.Label}
@@ -229,9 +238,10 @@ func (_u *TweetLikeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // TweetLikeUpdateOne is the builder for updating a single TweetLike entity.
 type TweetLikeUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *TweetLikeMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *TweetLikeMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetLikedAt sets the "liked_at" field.
@@ -354,6 +364,13 @@ func (_u *TweetLikeUpdateOne) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *TweetLikeUpdateOne) WithRetryOptions(opts ...any) *TweetLikeUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *TweetLikeUpdateOne) sqlSave(ctx context.Context) (_node *TweetLike, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -446,6 +463,7 @@ func (_u *TweetLikeUpdateOne) sqlSave(ctx context.Context) (_node *TweetLike, er
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &TweetLike{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

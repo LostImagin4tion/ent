@@ -34,6 +34,7 @@ type PetQuery struct {
 	withFriends    *PetQuery
 	withBestFriend *PetQuery
 	withFKs        bool
+	retryConfig    sqlgraph.RetryConfig
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -483,6 +484,7 @@ func (_q *PetQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Pet, err
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	_spec.RetryConfig = _q.retryConfig
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -680,6 +682,7 @@ func (_q *PetQuery) loadBestFriend(ctx context.Context, query *PetQuery, nodes [
 
 func (_q *PetQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
+	_spec.RetryConfig = _q.retryConfig
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
 		_spec.Unique = _q.ctx.Unique != nil && *_q.ctx.Unique
@@ -757,6 +760,13 @@ func (_q *PetQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// WithRetryOptions sets the retry options for the query operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_q *PetQuery) WithRetryOptions(opts ...any) *PetQuery {
+	_q.retryConfig.Options = opts
+	return _q
 }
 
 // PetGroupBy is the group-by builder for Pet entities.

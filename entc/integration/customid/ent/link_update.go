@@ -22,8 +22,9 @@ import (
 // LinkUpdate is the builder for updating Link entities.
 type LinkUpdate struct {
 	config
-	hooks    []Hook
-	mutation *LinkMutation
+	hooks       []Hook
+	mutation    *LinkMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the LinkUpdate builder.
@@ -70,6 +71,13 @@ func (_u *LinkUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *LinkUpdate) WithRetryOptions(opts ...any) *LinkUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *LinkUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(link.Table, link.Columns, sqlgraph.NewFieldSpec(link.FieldID, field.TypeUUID))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -82,6 +90,7 @@ func (_u *LinkUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.LinkInformation(); ok {
 		_spec.SetField(link.FieldLinkInformation, field.TypeJSON, value)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{link.Label}
@@ -97,9 +106,10 @@ func (_u *LinkUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // LinkUpdateOne is the builder for updating a single Link entity.
 type LinkUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *LinkMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *LinkMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetLinkInformation sets the "link_information" field.
@@ -153,6 +163,13 @@ func (_u *LinkUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *LinkUpdateOne) WithRetryOptions(opts ...any) *LinkUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *LinkUpdateOne) sqlSave(ctx context.Context) (_node *Link, err error) {
 	_spec := sqlgraph.NewUpdateSpec(link.Table, link.Columns, sqlgraph.NewFieldSpec(link.FieldID, field.TypeUUID))
 	id, ok := _u.mutation.ID()
@@ -182,6 +199,7 @@ func (_u *LinkUpdateOne) sqlSave(ctx context.Context) (_node *Link, err error) {
 	if value, ok := _u.mutation.LinkInformation(); ok {
 		_spec.SetField(link.FieldLinkInformation, field.TypeJSON, value)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Link{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

@@ -22,8 +22,9 @@ import (
 // CommentUpdate is the builder for updating Comment entities.
 type CommentUpdate struct {
 	config
-	hooks    []Hook
-	mutation *CommentMutation
+	hooks       []Hook
+	mutation    *CommentMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the CommentUpdate builder.
@@ -111,6 +112,13 @@ func (_u *CommentUpdate) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *CommentUpdate) WithRetryOptions(opts ...any) *CommentUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *CommentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -155,6 +163,7 @@ func (_u *CommentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{comment.Label}
@@ -170,9 +179,10 @@ func (_u *CommentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // CommentUpdateOne is the builder for updating a single Comment entity.
 type CommentUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *CommentMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *CommentMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetText sets the "text" field.
@@ -267,6 +277,13 @@ func (_u *CommentUpdateOne) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *CommentUpdateOne) WithRetryOptions(opts ...any) *CommentUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *CommentUpdateOne) sqlSave(ctx context.Context) (_node *Comment, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -328,6 +345,7 @@ func (_u *CommentUpdateOne) sqlSave(ctx context.Context) (_node *Comment, err er
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Comment{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

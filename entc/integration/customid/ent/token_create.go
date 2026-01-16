@@ -23,9 +23,10 @@ import (
 // TokenCreate is the builder for creating a Token entity.
 type TokenCreate struct {
 	config
-	mutation *TokenMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *TokenMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // SetBody sets the "body" field.
@@ -144,6 +145,7 @@ func (_c *TokenCreate) createSpec() (*Token, *sqlgraph.CreateSpec) {
 		_node = &Token{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(token.Table, sqlgraph.NewFieldSpec(token.FieldID, field.TypeOther))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
@@ -171,6 +173,13 @@ func (_c *TokenCreate) createSpec() (*Token, *sqlgraph.CreateSpec) {
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *TokenCreate) WithRetryOptions(opts ...any) *TokenCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -337,9 +346,10 @@ func (u *TokenUpsertOne) IDX(ctx context.Context) sid.ID {
 // TokenCreateBulk is the builder for creating many Token entities in bulk.
 type TokenCreateBulk struct {
 	config
-	err      error
-	builders []*TokenCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*TokenCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the Token entities in the database.
@@ -369,6 +379,7 @@ func (_c *TokenCreateBulk) Save(ctx context.Context) ([]*Token, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -418,6 +429,13 @@ func (_c *TokenCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *TokenCreateBulk) WithRetryOptions(opts ...any) *TokenCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

@@ -23,8 +23,9 @@ import (
 // RentalCreate is the builder for creating a Rental entity.
 type RentalCreate struct {
 	config
-	mutation *RentalMutation
-	hooks    []Hook
+	mutation    *RentalMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetDate sets the "date" field.
@@ -147,6 +148,7 @@ func (_c *RentalCreate) createSpec() (*Rental, *sqlgraph.CreateSpec) {
 		_node = &Rental{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(rental.Table, sqlgraph.NewFieldSpec(rental.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	if value, ok := _c.mutation.Date(); ok {
 		_spec.SetField(rental.FieldDate, field.TypeTime, value)
 		_node.Date = value
@@ -188,11 +190,19 @@ func (_c *RentalCreate) createSpec() (*Rental, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *RentalCreate) WithRetryOptions(opts ...any) *RentalCreate {
+	_c.retryConfig.Options = opts
+	return _c
+}
+
 // RentalCreateBulk is the builder for creating many Rental entities in bulk.
 type RentalCreateBulk struct {
 	config
-	err      error
-	builders []*RentalCreate
+	err         error
+	builders    []*RentalCreate
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Save creates the Rental entities in the database.
@@ -222,6 +232,7 @@ func (_c *RentalCreateBulk) Save(ctx context.Context) ([]*Rental, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -274,4 +285,11 @@ func (_c *RentalCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *RentalCreateBulk) WithRetryOptions(opts ...any) *RentalCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }

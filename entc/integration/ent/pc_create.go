@@ -20,9 +20,10 @@ import (
 // PCCreate is the builder for creating a PC entity.
 type PCCreate struct {
 	config
-	mutation *PCMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *PCMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Mutation returns the PCMutation object of the builder.
@@ -85,8 +86,16 @@ func (_c *PCCreate) createSpec() (*PC, *sqlgraph.CreateSpec) {
 		_node = &PC{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(pc.Table, sqlgraph.NewFieldSpec(pc.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *PCCreate) WithRetryOptions(opts ...any) *PCCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -208,9 +217,10 @@ func (u *PCUpsertOne) IDX(ctx context.Context) int {
 // PCCreateBulk is the builder for creating many PC entities in bulk.
 type PCCreateBulk struct {
 	config
-	err      error
-	builders []*PCCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*PCCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the PC entities in the database.
@@ -239,6 +249,7 @@ func (_c *PCCreateBulk) Save(ctx context.Context) ([]*PC, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -292,6 +303,13 @@ func (_c *PCCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *PCCreateBulk) WithRetryOptions(opts ...any) *PCCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

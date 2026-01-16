@@ -22,11 +22,12 @@ import (
 // UserQuery is the builder for querying User entities.
 type UserQuery struct {
 	config
-	ctx        *QueryContext
-	order      []user.OrderOption
-	inters     []Interceptor
-	predicates []predicate.User
-	modifiers  []func(*sql.Selector)
+	ctx         *QueryContext
+	order       []user.OrderOption
+	inters      []Interceptor
+	predicates  []predicate.User
+	modifiers   []func(*sql.Selector)
+	retryConfig sqlgraph.RetryConfig
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -352,6 +353,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	if len(_q.modifiers) > 0 {
 		_spec.Modifiers = _q.modifiers
 	}
+	_spec.RetryConfig = _q.retryConfig
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -369,6 +371,7 @@ func (_q *UserQuery) sqlCount(ctx context.Context) (int, error) {
 	if len(_q.modifiers) > 0 {
 		_spec.Modifiers = _q.modifiers
 	}
+	_spec.RetryConfig = _q.retryConfig
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
 		_spec.Unique = _q.ctx.Unique != nil && *_q.ctx.Unique
@@ -455,6 +458,13 @@ func (_q *UserQuery) sqlQuery(ctx context.Context) *sql.Selector {
 func (_q *UserQuery) Modify(modifiers ...func(s *sql.Selector)) *UserSelect {
 	_q.modifiers = append(_q.modifiers, modifiers...)
 	return _q.Select()
+}
+
+// WithRetryOptions sets the retry options for the query operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_q *UserQuery) WithRetryOptions(opts ...any) *UserQuery {
+	_q.retryConfig.Options = opts
+	return _q
 }
 
 // UserGroupBy is the group-by builder for User entities.

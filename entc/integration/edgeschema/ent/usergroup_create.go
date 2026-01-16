@@ -23,9 +23,10 @@ import (
 // UserGroupCreate is the builder for creating a UserGroup entity.
 type UserGroupCreate struct {
 	config
-	mutation *UserGroupMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *UserGroupMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // SetJoinedAt sets the "joined_at" field.
@@ -148,6 +149,7 @@ func (_c *UserGroupCreate) createSpec() (*UserGroup, *sqlgraph.CreateSpec) {
 		_node = &UserGroup{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(usergroup.Table, sqlgraph.NewFieldSpec(usergroup.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	if value, ok := _c.mutation.JoinedAt(); ok {
 		_spec.SetField(usergroup.FieldJoinedAt, field.TypeTime, value)
@@ -188,6 +190,13 @@ func (_c *UserGroupCreate) createSpec() (*UserGroup, *sqlgraph.CreateSpec) {
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *UserGroupCreate) WithRetryOptions(opts ...any) *UserGroupCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -393,9 +402,10 @@ func (u *UserGroupUpsertOne) IDX(ctx context.Context) int {
 // UserGroupCreateBulk is the builder for creating many UserGroup entities in bulk.
 type UserGroupCreateBulk struct {
 	config
-	err      error
-	builders []*UserGroupCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*UserGroupCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the UserGroup entities in the database.
@@ -425,6 +435,7 @@ func (_c *UserGroupCreateBulk) Save(ctx context.Context) ([]*UserGroup, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -478,6 +489,13 @@ func (_c *UserGroupCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *UserGroupCreateBulk) WithRetryOptions(opts ...any) *UserGroupCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

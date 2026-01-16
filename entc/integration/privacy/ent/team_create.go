@@ -21,8 +21,9 @@ import (
 // TeamCreate is the builder for creating a Team entity.
 type TeamCreate struct {
 	config
-	mutation *TeamMutation
-	hooks    []Hook
+	mutation    *TeamMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetName sets the "name" field.
@@ -129,6 +130,7 @@ func (_c *TeamCreate) createSpec() (*Team, *sqlgraph.CreateSpec) {
 		_node = &Team{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(team.Table, sqlgraph.NewFieldSpec(team.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(team.FieldName, field.TypeString, value)
 		_node.Name = value
@@ -168,11 +170,19 @@ func (_c *TeamCreate) createSpec() (*Team, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *TeamCreate) WithRetryOptions(opts ...any) *TeamCreate {
+	_c.retryConfig.Options = opts
+	return _c
+}
+
 // TeamCreateBulk is the builder for creating many Team entities in bulk.
 type TeamCreateBulk struct {
 	config
-	err      error
-	builders []*TeamCreate
+	err         error
+	builders    []*TeamCreate
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Save creates the Team entities in the database.
@@ -201,6 +211,7 @@ func (_c *TeamCreateBulk) Save(ctx context.Context) ([]*Team, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -253,4 +264,11 @@ func (_c *TeamCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *TeamCreateBulk) WithRetryOptions(opts ...any) *TeamCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }

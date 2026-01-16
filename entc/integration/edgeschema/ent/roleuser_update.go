@@ -24,8 +24,9 @@ import (
 // RoleUserUpdate is the builder for updating RoleUser entities.
 type RoleUserUpdate struct {
 	config
-	hooks    []Hook
-	mutation *RoleUserMutation
+	hooks       []Hook
+	mutation    *RoleUserMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the RoleUserUpdate builder.
@@ -141,6 +142,13 @@ func (_u *RoleUserUpdate) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *RoleUserUpdate) WithRetryOptions(opts ...any) *RoleUserUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *RoleUserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -214,6 +222,7 @@ func (_u *RoleUserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{roleuser.Label}
@@ -229,9 +238,10 @@ func (_u *RoleUserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // RoleUserUpdateOne is the builder for updating a single RoleUser entity.
 type RoleUserUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *RoleUserMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *RoleUserMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -354,6 +364,13 @@ func (_u *RoleUserUpdateOne) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *RoleUserUpdateOne) WithRetryOptions(opts ...any) *RoleUserUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *RoleUserUpdateOne) sqlSave(ctx context.Context) (_node *RoleUser, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -446,6 +463,7 @@ func (_u *RoleUserUpdateOne) sqlSave(ctx context.Context) (_node *RoleUser, err 
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &RoleUser{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

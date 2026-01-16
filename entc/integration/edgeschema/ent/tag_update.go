@@ -26,8 +26,9 @@ import (
 // TagUpdate is the builder for updating Tag entities.
 type TagUpdate struct {
 	config
-	hooks    []Hook
-	mutation *TagMutation
+	hooks       []Hook
+	mutation    *TagMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the TagUpdate builder.
@@ -224,6 +225,13 @@ func (_u *TagUpdate) ExecX(ctx context.Context) {
 	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *TagUpdate) WithRetryOptions(opts ...any) *TagUpdate {
+	_u.retryConfig.Options = opts
+	return _u
 }
 
 func (_u *TagUpdate) sqlSave(ctx context.Context) (_node int, err error) {
@@ -439,6 +447,7 @@ func (_u *TagUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{tag.Label}
@@ -454,9 +463,10 @@ func (_u *TagUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // TagUpdateOne is the builder for updating a single Tag entity.
 type TagUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *TagMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *TagMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetValue sets the "value" field.
@@ -660,6 +670,13 @@ func (_u *TagUpdateOne) ExecX(ctx context.Context) {
 	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *TagUpdateOne) WithRetryOptions(opts ...any) *TagUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
 }
 
 func (_u *TagUpdateOne) sqlSave(ctx context.Context) (_node *Tag, err error) {
@@ -892,6 +909,7 @@ func (_u *TagUpdateOne) sqlSave(ctx context.Context) (_node *Tag, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Tag{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

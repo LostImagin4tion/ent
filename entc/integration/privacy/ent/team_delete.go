@@ -19,8 +19,9 @@ import (
 // TeamDelete is the builder for deleting a Team entity.
 type TeamDelete struct {
 	config
-	hooks    []Hook
-	mutation *TeamMutation
+	hooks       []Hook
+	mutation    *TeamMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the TeamDelete builder.
@@ -45,6 +46,7 @@ func (_d *TeamDelete) ExecX(ctx context.Context) int {
 
 func (_d *TeamDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(team.Table, sqlgraph.NewFieldSpec(team.FieldID, field.TypeInt))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *TeamDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *TeamDelete) WithRetryOptions(opts ...any) *TeamDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // TeamDeleteOne is the builder for deleting a single Team entity.

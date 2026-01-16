@@ -22,9 +22,10 @@ import (
 // FileTypeUpdate is the builder for updating FileType entities.
 type FileTypeUpdate struct {
 	config
-	hooks     []Hook
-	mutation  *FileTypeMutation
-	modifiers []func(*sql.UpdateBuilder)
+	hooks       []Hook
+	mutation    *FileTypeMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the FileTypeUpdate builder.
@@ -164,6 +165,13 @@ func (_u *FileTypeUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *FileT
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *FileTypeUpdate) WithRetryOptions(opts ...any) *FileTypeUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *FileTypeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -231,6 +239,7 @@ func (_u *FileTypeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{filetype.Label}
@@ -246,10 +255,11 @@ func (_u *FileTypeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // FileTypeUpdateOne is the builder for updating a single FileType entity.
 type FileTypeUpdateOne struct {
 	config
-	fields    []string
-	hooks     []Hook
-	mutation  *FileTypeMutation
-	modifiers []func(*sql.UpdateBuilder)
+	fields      []string
+	hooks       []Hook
+	mutation    *FileTypeMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetName sets the "name" field.
@@ -396,6 +406,13 @@ func (_u *FileTypeUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *Fi
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *FileTypeUpdateOne) WithRetryOptions(opts ...any) *FileTypeUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *FileTypeUpdateOne) sqlSave(ctx context.Context) (_node *FileType, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -480,6 +497,7 @@ func (_u *FileTypeUpdateOne) sqlSave(ctx context.Context) (_node *FileType, err 
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	_node = &FileType{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

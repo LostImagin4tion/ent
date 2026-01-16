@@ -19,8 +19,9 @@ import (
 // CustomTypeCreate is the builder for creating a CustomType entity.
 type CustomTypeCreate struct {
 	config
-	mutation *CustomTypeMutation
-	hooks    []Hook
+	mutation    *CustomTypeMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetCustom sets the "custom" field.
@@ -125,6 +126,7 @@ func (_c *CustomTypeCreate) createSpec() (*CustomType, *sqlgraph.CreateSpec) {
 		_node = &CustomType{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(customtype.Table, sqlgraph.NewFieldSpec(customtype.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	if value, ok := _c.mutation.Custom(); ok {
 		_spec.SetField(customtype.FieldCustom, field.TypeString, value)
 		_node.Custom = value
@@ -140,11 +142,19 @@ func (_c *CustomTypeCreate) createSpec() (*CustomType, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *CustomTypeCreate) WithRetryOptions(opts ...any) *CustomTypeCreate {
+	_c.retryConfig.Options = opts
+	return _c
+}
+
 // CustomTypeCreateBulk is the builder for creating many CustomType entities in bulk.
 type CustomTypeCreateBulk struct {
 	config
-	err      error
-	builders []*CustomTypeCreate
+	err         error
+	builders    []*CustomTypeCreate
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Save creates the CustomType entities in the database.
@@ -173,6 +183,7 @@ func (_c *CustomTypeCreateBulk) Save(ctx context.Context) ([]*CustomType, error)
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -225,4 +236,11 @@ func (_c *CustomTypeCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *CustomTypeCreateBulk) WithRetryOptions(opts ...any) *CustomTypeCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }

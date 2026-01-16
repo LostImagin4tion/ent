@@ -23,9 +23,10 @@ import (
 // AttachedFileCreate is the builder for creating a AttachedFile entity.
 type AttachedFileCreate struct {
 	config
-	mutation *AttachedFileMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *AttachedFileMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // SetAttachTime sets the "attach_time" field.
@@ -154,6 +155,7 @@ func (_c *AttachedFileCreate) createSpec() (*AttachedFile, *sqlgraph.CreateSpec)
 		_node = &AttachedFile{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(attachedfile.Table, sqlgraph.NewFieldSpec(attachedfile.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	if value, ok := _c.mutation.AttachTime(); ok {
 		_spec.SetField(attachedfile.FieldAttachTime, field.TypeTime, value)
@@ -194,6 +196,13 @@ func (_c *AttachedFileCreate) createSpec() (*AttachedFile, *sqlgraph.CreateSpec)
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *AttachedFileCreate) WithRetryOptions(opts ...any) *AttachedFileCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -399,9 +408,10 @@ func (u *AttachedFileUpsertOne) IDX(ctx context.Context) int {
 // AttachedFileCreateBulk is the builder for creating many AttachedFile entities in bulk.
 type AttachedFileCreateBulk struct {
 	config
-	err      error
-	builders []*AttachedFileCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*AttachedFileCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the AttachedFile entities in the database.
@@ -431,6 +441,7 @@ func (_c *AttachedFileCreateBulk) Save(ctx context.Context) ([]*AttachedFile, er
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -484,6 +495,13 @@ func (_c *AttachedFileCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *AttachedFileCreateBulk) WithRetryOptions(opts ...any) *AttachedFileCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

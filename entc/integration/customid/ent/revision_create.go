@@ -21,9 +21,10 @@ import (
 // RevisionCreate is the builder for creating a Revision entity.
 type RevisionCreate struct {
 	config
-	mutation *RevisionMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *RevisionMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // SetID sets the "id" field.
@@ -97,12 +98,20 @@ func (_c *RevisionCreate) createSpec() (*Revision, *sqlgraph.CreateSpec) {
 		_node = &Revision{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(revision.Table, sqlgraph.NewFieldSpec(revision.FieldID, field.TypeString))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = id
 	}
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *RevisionCreate) WithRetryOptions(opts ...any) *RevisionCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -237,9 +246,10 @@ func (u *RevisionUpsertOne) IDX(ctx context.Context) string {
 // RevisionCreateBulk is the builder for creating many Revision entities in bulk.
 type RevisionCreateBulk struct {
 	config
-	err      error
-	builders []*RevisionCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*RevisionCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the Revision entities in the database.
@@ -268,6 +278,7 @@ func (_c *RevisionCreateBulk) Save(ctx context.Context) ([]*Revision, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -317,6 +328,13 @@ func (_c *RevisionCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *RevisionCreateBulk) WithRetryOptions(opts ...any) *RevisionCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

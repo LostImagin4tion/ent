@@ -21,9 +21,10 @@ import (
 // BuilderUpdate is the builder for updating Builder entities.
 type BuilderUpdate struct {
 	config
-	hooks     []Hook
-	mutation  *BuilderMutation
-	modifiers []func(*sql.UpdateBuilder)
+	hooks       []Hook
+	mutation    *BuilderMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the BuilderUpdate builder.
@@ -70,6 +71,13 @@ func (_u *BuilderUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *Builde
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *BuilderUpdate) WithRetryOptions(opts ...any) *BuilderUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *BuilderUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(builder.Table, builder.Columns, sqlgraph.NewFieldSpec(builder.FieldID, field.TypeInt))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -80,6 +88,7 @@ func (_u *BuilderUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 	}
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{builder.Label}
@@ -95,10 +104,11 @@ func (_u *BuilderUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // BuilderUpdateOne is the builder for updating a single Builder entity.
 type BuilderUpdateOne struct {
 	config
-	fields    []string
-	hooks     []Hook
-	mutation  *BuilderMutation
-	modifiers []func(*sql.UpdateBuilder)
+	fields      []string
+	hooks       []Hook
+	mutation    *BuilderMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Mutation returns the BuilderMutation object of the builder.
@@ -152,6 +162,13 @@ func (_u *BuilderUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *Bui
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *BuilderUpdateOne) WithRetryOptions(opts ...any) *BuilderUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *BuilderUpdateOne) sqlSave(ctx context.Context) (_node *Builder, err error) {
 	_spec := sqlgraph.NewUpdateSpec(builder.Table, builder.Columns, sqlgraph.NewFieldSpec(builder.FieldID, field.TypeInt))
 	id, ok := _u.mutation.ID()
@@ -179,6 +196,7 @@ func (_u *BuilderUpdateOne) sqlSave(ctx context.Context) (_node *Builder, err er
 		}
 	}
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Builder{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

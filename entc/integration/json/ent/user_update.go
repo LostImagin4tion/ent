@@ -26,9 +26,10 @@ import (
 // UserUpdate is the builder for updating User entities.
 type UserUpdate struct {
 	config
-	hooks     []Hook
-	mutation  *UserMutation
-	modifiers []func(*sql.UpdateBuilder)
+	hooks       []Hook
+	mutation    *UserMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -307,6 +308,13 @@ func (_u *UserUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *UserUpdat
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *UserUpdate) WithRetryOptions(opts ...any) *UserUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -440,6 +448,7 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		_spec.ClearField(user.FieldUnknown, field.TypeJSON)
 	}
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{user.Label}
@@ -455,10 +464,11 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // UserUpdateOne is the builder for updating a single User entity.
 type UserUpdateOne struct {
 	config
-	fields    []string
-	hooks     []Hook
-	mutation  *UserMutation
-	modifiers []func(*sql.UpdateBuilder)
+	fields      []string
+	hooks       []Hook
+	mutation    *UserMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetT sets the "t" field.
@@ -744,6 +754,13 @@ func (_u *UserUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *UserUp
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *UserUpdateOne) WithRetryOptions(opts ...any) *UserUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -894,6 +911,7 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 		_spec.ClearField(user.FieldUnknown, field.TypeJSON)
 	}
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	_node = &User{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

@@ -28,9 +28,10 @@ import (
 // FieldTypeUpdate is the builder for updating FieldType entities.
 type FieldTypeUpdate struct {
 	config
-	hooks     []Hook
-	mutation  *FieldTypeMutation
-	modifiers []func(*sql.UpdateBuilder)
+	hooks       []Hook
+	mutation    *FieldTypeMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the FieldTypeUpdate builder.
@@ -1447,6 +1448,13 @@ func (_u *FieldTypeUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *Fiel
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *FieldTypeUpdate) WithRetryOptions(opts ...any) *FieldTypeUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *FieldTypeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -1918,6 +1926,7 @@ func (_u *FieldTypeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		_spec.ClearField(fieldtype.FieldPasswordOther, field.TypeOther)
 	}
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{fieldtype.Label}
@@ -1933,10 +1942,11 @@ func (_u *FieldTypeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // FieldTypeUpdateOne is the builder for updating a single FieldType entity.
 type FieldTypeUpdateOne struct {
 	config
-	fields    []string
-	hooks     []Hook
-	mutation  *FieldTypeMutation
-	modifiers []func(*sql.UpdateBuilder)
+	fields      []string
+	hooks       []Hook
+	mutation    *FieldTypeMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetInt sets the "int" field.
@@ -3360,6 +3370,13 @@ func (_u *FieldTypeUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *F
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *FieldTypeUpdateOne) WithRetryOptions(opts ...any) *FieldTypeUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *FieldTypeUpdateOne) sqlSave(ctx context.Context) (_node *FieldType, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -3848,6 +3865,7 @@ func (_u *FieldTypeUpdateOne) sqlSave(ctx context.Context) (_node *FieldType, er
 		_spec.ClearField(fieldtype.FieldPasswordOther, field.TypeOther)
 	}
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	_node = &FieldType{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

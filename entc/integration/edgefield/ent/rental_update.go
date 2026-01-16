@@ -22,8 +22,9 @@ import (
 // RentalUpdate is the builder for updating Rental entities.
 type RentalUpdate struct {
 	config
-	hooks    []Hook
-	mutation *RentalMutation
+	hooks       []Hook
+	mutation    *RentalMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the RentalUpdate builder.
@@ -89,6 +90,13 @@ func (_u *RentalUpdate) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *RentalUpdate) WithRetryOptions(opts ...any) *RentalUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *RentalUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -104,6 +112,7 @@ func (_u *RentalUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Date(); ok {
 		_spec.SetField(rental.FieldDate, field.TypeTime, value)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{rental.Label}
@@ -119,9 +128,10 @@ func (_u *RentalUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // RentalUpdateOne is the builder for updating a single Rental entity.
 type RentalUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *RentalMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *RentalMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetDate sets the "date" field.
@@ -194,6 +204,13 @@ func (_u *RentalUpdateOne) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *RentalUpdateOne) WithRetryOptions(opts ...any) *RentalUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *RentalUpdateOne) sqlSave(ctx context.Context) (_node *Rental, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -226,6 +243,7 @@ func (_u *RentalUpdateOne) sqlSave(ctx context.Context) (_node *Rental, err erro
 	if value, ok := _u.mutation.Date(); ok {
 		_spec.SetField(rental.FieldDate, field.TypeTime, value)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Rental{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

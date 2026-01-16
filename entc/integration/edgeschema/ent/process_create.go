@@ -22,9 +22,10 @@ import (
 // ProcessCreate is the builder for creating a Process entity.
 type ProcessCreate struct {
 	config
-	mutation *ProcessMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *ProcessMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // AddFileIDs adds the "files" edge to the File entity by IDs.
@@ -117,6 +118,7 @@ func (_c *ProcessCreate) createSpec() (*Process, *sqlgraph.CreateSpec) {
 		_node = &Process{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(process.Table, sqlgraph.NewFieldSpec(process.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	if nodes := _c.mutation.FilesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -155,6 +157,13 @@ func (_c *ProcessCreate) createSpec() (*Process, *sqlgraph.CreateSpec) {
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *ProcessCreate) WithRetryOptions(opts ...any) *ProcessCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -276,9 +285,10 @@ func (u *ProcessUpsertOne) IDX(ctx context.Context) int {
 // ProcessCreateBulk is the builder for creating many Process entities in bulk.
 type ProcessCreateBulk struct {
 	config
-	err      error
-	builders []*ProcessCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*ProcessCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the Process entities in the database.
@@ -307,6 +317,7 @@ func (_c *ProcessCreateBulk) Save(ctx context.Context) ([]*Process, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -360,6 +371,13 @@ func (_c *ProcessCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *ProcessCreateBulk) WithRetryOptions(opts ...any) *ProcessCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

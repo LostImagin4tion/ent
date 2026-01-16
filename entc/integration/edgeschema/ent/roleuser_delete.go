@@ -18,8 +18,9 @@ import (
 // RoleUserDelete is the builder for deleting a RoleUser entity.
 type RoleUserDelete struct {
 	config
-	hooks    []Hook
-	mutation *RoleUserMutation
+	hooks       []Hook
+	mutation    *RoleUserMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the RoleUserDelete builder.
@@ -44,6 +45,7 @@ func (_d *RoleUserDelete) ExecX(ctx context.Context) int {
 
 func (_d *RoleUserDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(roleuser.Table, nil)
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -57,6 +59,13 @@ func (_d *RoleUserDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *RoleUserDelete) WithRetryOptions(opts ...any) *RoleUserDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // RoleUserDeleteOne is the builder for deleting a single RoleUser entity.

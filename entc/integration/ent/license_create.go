@@ -21,9 +21,10 @@ import (
 // LicenseCreate is the builder for creating a License entity.
 type LicenseCreate struct {
 	config
-	mutation *LicenseMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *LicenseMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // SetCreateTime sets the "create_time" field.
@@ -141,6 +142,7 @@ func (_c *LicenseCreate) createSpec() (*License, *sqlgraph.CreateSpec) {
 		_node = &License{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(license.Table, sqlgraph.NewFieldSpec(license.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
@@ -155,6 +157,13 @@ func (_c *LicenseCreate) createSpec() (*License, *sqlgraph.CreateSpec) {
 		_node.UpdateTime = value
 	}
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *LicenseCreate) WithRetryOptions(opts ...any) *LicenseCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -319,9 +328,10 @@ func (u *LicenseUpsertOne) IDX(ctx context.Context) int {
 // LicenseCreateBulk is the builder for creating many License entities in bulk.
 type LicenseCreateBulk struct {
 	config
-	err      error
-	builders []*LicenseCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*LicenseCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the License entities in the database.
@@ -351,6 +361,7 @@ func (_c *LicenseCreateBulk) Save(ctx context.Context) ([]*License, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -404,6 +415,13 @@ func (_c *LicenseCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *LicenseCreateBulk) WithRetryOptions(opts ...any) *LicenseCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

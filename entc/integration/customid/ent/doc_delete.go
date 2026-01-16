@@ -19,8 +19,9 @@ import (
 // DocDelete is the builder for deleting a Doc entity.
 type DocDelete struct {
 	config
-	hooks    []Hook
-	mutation *DocMutation
+	hooks       []Hook
+	mutation    *DocMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the DocDelete builder.
@@ -45,6 +46,7 @@ func (_d *DocDelete) ExecX(ctx context.Context) int {
 
 func (_d *DocDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(doc.Table, sqlgraph.NewFieldSpec(doc.FieldID, field.TypeString))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *DocDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *DocDelete) WithRetryOptions(opts ...any) *DocDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // DocDeleteOne is the builder for deleting a single Doc entity.

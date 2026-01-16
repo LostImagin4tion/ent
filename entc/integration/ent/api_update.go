@@ -21,9 +21,10 @@ import (
 // APIUpdate is the builder for updating Api entities.
 type APIUpdate struct {
 	config
-	hooks     []Hook
-	mutation  *APIMutation
-	modifiers []func(*sql.UpdateBuilder)
+	hooks       []Hook
+	mutation    *APIMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the APIUpdate builder.
@@ -70,6 +71,13 @@ func (_u *APIUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *APIUpdate 
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *APIUpdate) WithRetryOptions(opts ...any) *APIUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *APIUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(api.Table, api.Columns, sqlgraph.NewFieldSpec(api.FieldID, field.TypeInt))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -80,6 +88,7 @@ func (_u *APIUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 	}
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{api.Label}
@@ -95,10 +104,11 @@ func (_u *APIUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // APIUpdateOne is the builder for updating a single Api entity.
 type APIUpdateOne struct {
 	config
-	fields    []string
-	hooks     []Hook
-	mutation  *APIMutation
-	modifiers []func(*sql.UpdateBuilder)
+	fields      []string
+	hooks       []Hook
+	mutation    *APIMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Mutation returns the APIMutation object of the builder.
@@ -152,6 +162,13 @@ func (_u *APIUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *APIUpda
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *APIUpdateOne) WithRetryOptions(opts ...any) *APIUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *APIUpdateOne) sqlSave(ctx context.Context) (_node *Api, err error) {
 	_spec := sqlgraph.NewUpdateSpec(api.Table, api.Columns, sqlgraph.NewFieldSpec(api.FieldID, field.TypeInt))
 	id, ok := _u.mutation.ID()
@@ -179,6 +196,7 @@ func (_u *APIUpdateOne) sqlSave(ctx context.Context) (_node *Api, err error) {
 		}
 	}
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Api{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

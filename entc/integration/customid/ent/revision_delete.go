@@ -19,8 +19,9 @@ import (
 // RevisionDelete is the builder for deleting a Revision entity.
 type RevisionDelete struct {
 	config
-	hooks    []Hook
-	mutation *RevisionMutation
+	hooks       []Hook
+	mutation    *RevisionMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the RevisionDelete builder.
@@ -45,6 +46,7 @@ func (_d *RevisionDelete) ExecX(ctx context.Context) int {
 
 func (_d *RevisionDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(revision.Table, sqlgraph.NewFieldSpec(revision.FieldID, field.TypeString))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *RevisionDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *RevisionDelete) WithRetryOptions(opts ...any) *RevisionDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // RevisionDeleteOne is the builder for deleting a single Revision entity.

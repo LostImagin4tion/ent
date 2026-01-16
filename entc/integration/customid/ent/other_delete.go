@@ -19,8 +19,9 @@ import (
 // OtherDelete is the builder for deleting a Other entity.
 type OtherDelete struct {
 	config
-	hooks    []Hook
-	mutation *OtherMutation
+	hooks       []Hook
+	mutation    *OtherMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the OtherDelete builder.
@@ -45,6 +46,7 @@ func (_d *OtherDelete) ExecX(ctx context.Context) int {
 
 func (_d *OtherDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(other.Table, sqlgraph.NewFieldSpec(other.FieldID, field.TypeOther))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *OtherDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *OtherDelete) WithRetryOptions(opts ...any) *OtherDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // OtherDeleteOne is the builder for deleting a single Other entity.

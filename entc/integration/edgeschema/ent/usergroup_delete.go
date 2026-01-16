@@ -19,8 +19,9 @@ import (
 // UserGroupDelete is the builder for deleting a UserGroup entity.
 type UserGroupDelete struct {
 	config
-	hooks    []Hook
-	mutation *UserGroupMutation
+	hooks       []Hook
+	mutation    *UserGroupMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the UserGroupDelete builder.
@@ -45,6 +46,7 @@ func (_d *UserGroupDelete) ExecX(ctx context.Context) int {
 
 func (_d *UserGroupDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(usergroup.Table, sqlgraph.NewFieldSpec(usergroup.FieldID, field.TypeInt))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *UserGroupDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *UserGroupDelete) WithRetryOptions(opts ...any) *UserGroupDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // UserGroupDeleteOne is the builder for deleting a single UserGroup entity.

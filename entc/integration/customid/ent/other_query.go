@@ -23,10 +23,11 @@ import (
 // OtherQuery is the builder for querying Other entities.
 type OtherQuery struct {
 	config
-	ctx        *QueryContext
-	order      []other.OrderOption
-	inters     []Interceptor
-	predicates []predicate.Other
+	ctx         *QueryContext
+	order       []other.OrderOption
+	inters      []Interceptor
+	predicates  []predicate.Other
+	retryConfig sqlgraph.RetryConfig
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -326,6 +327,7 @@ func (_q *OtherQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Other,
 		nodes = append(nodes, node)
 		return node.assignValues(columns, values)
 	}
+	_spec.RetryConfig = _q.retryConfig
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -340,6 +342,7 @@ func (_q *OtherQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Other,
 
 func (_q *OtherQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
+	_spec.RetryConfig = _q.retryConfig
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
 		_spec.Unique = _q.ctx.Unique != nil && *_q.ctx.Unique
@@ -417,6 +420,13 @@ func (_q *OtherQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// WithRetryOptions sets the retry options for the query operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_q *OtherQuery) WithRetryOptions(opts ...any) *OtherQuery {
+	_q.retryConfig.Options = opts
+	return _q
 }
 
 // OtherGroupBy is the group-by builder for Other entities.

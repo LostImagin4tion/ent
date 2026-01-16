@@ -23,8 +23,9 @@ import (
 // TeamUpdate is the builder for updating Team entities.
 type TeamUpdate struct {
 	config
-	hooks    []Hook
-	mutation *TeamMutation
+	hooks       []Hook
+	mutation    *TeamMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the TeamUpdate builder.
@@ -161,6 +162,13 @@ func (_u *TeamUpdate) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *TeamUpdate) WithRetryOptions(opts ...any) *TeamUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *TeamUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -266,6 +274,7 @@ func (_u *TeamUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{team.Label}
@@ -281,9 +290,10 @@ func (_u *TeamUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // TeamUpdateOne is the builder for updating a single Team entity.
 type TeamUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *TeamMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *TeamMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetName sets the "name" field.
@@ -427,6 +437,13 @@ func (_u *TeamUpdateOne) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *TeamUpdateOne) WithRetryOptions(opts ...any) *TeamUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *TeamUpdateOne) sqlSave(ctx context.Context) (_node *Team, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -549,6 +566,7 @@ func (_u *TeamUpdateOne) sqlSave(ctx context.Context) (_node *Team, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Team{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

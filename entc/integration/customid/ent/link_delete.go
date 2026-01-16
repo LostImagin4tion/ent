@@ -19,8 +19,9 @@ import (
 // LinkDelete is the builder for deleting a Link entity.
 type LinkDelete struct {
 	config
-	hooks    []Hook
-	mutation *LinkMutation
+	hooks       []Hook
+	mutation    *LinkMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the LinkDelete builder.
@@ -45,6 +46,7 @@ func (_d *LinkDelete) ExecX(ctx context.Context) int {
 
 func (_d *LinkDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(link.Table, sqlgraph.NewFieldSpec(link.FieldID, field.TypeUUID))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *LinkDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *LinkDelete) WithRetryOptions(opts ...any) *LinkDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // LinkDeleteOne is the builder for deleting a single Link entity.

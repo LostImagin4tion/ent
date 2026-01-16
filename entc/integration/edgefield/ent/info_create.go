@@ -21,8 +21,9 @@ import (
 // InfoCreate is the builder for creating a Info entity.
 type InfoCreate struct {
 	config
-	mutation *InfoMutation
-	hooks    []Hook
+	mutation    *InfoMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetContent sets the "content" field.
@@ -121,6 +122,7 @@ func (_c *InfoCreate) createSpec() (*Info, *sqlgraph.CreateSpec) {
 		_node = &Info{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(info.Table, sqlgraph.NewFieldSpec(info.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = id
@@ -149,11 +151,19 @@ func (_c *InfoCreate) createSpec() (*Info, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *InfoCreate) WithRetryOptions(opts ...any) *InfoCreate {
+	_c.retryConfig.Options = opts
+	return _c
+}
+
 // InfoCreateBulk is the builder for creating many Info entities in bulk.
 type InfoCreateBulk struct {
 	config
-	err      error
-	builders []*InfoCreate
+	err         error
+	builders    []*InfoCreate
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Save creates the Info entities in the database.
@@ -182,6 +192,7 @@ func (_c *InfoCreateBulk) Save(ctx context.Context) ([]*Info, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -234,4 +245,11 @@ func (_c *InfoCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *InfoCreateBulk) WithRetryOptions(opts ...any) *InfoCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }

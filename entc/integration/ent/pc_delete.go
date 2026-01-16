@@ -19,8 +19,9 @@ import (
 // PCDelete is the builder for deleting a PC entity.
 type PCDelete struct {
 	config
-	hooks    []Hook
-	mutation *PCMutation
+	hooks       []Hook
+	mutation    *PCMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the PCDelete builder.
@@ -45,6 +46,7 @@ func (_d *PCDelete) ExecX(ctx context.Context) int {
 
 func (_d *PCDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(pc.Table, sqlgraph.NewFieldSpec(pc.FieldID, field.TypeInt))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *PCDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *PCDelete) WithRetryOptions(opts ...any) *PCDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // PCDeleteOne is the builder for deleting a single PC entity.

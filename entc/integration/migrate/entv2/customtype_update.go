@@ -22,8 +22,9 @@ import (
 // CustomTypeUpdate is the builder for updating CustomType entities.
 type CustomTypeUpdate struct {
 	config
-	hooks    []Hook
-	mutation *CustomTypeMutation
+	hooks       []Hook
+	mutation    *CustomTypeMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the CustomTypeUpdate builder.
@@ -124,6 +125,13 @@ func (_u *CustomTypeUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *CustomTypeUpdate) WithRetryOptions(opts ...any) *CustomTypeUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *CustomTypeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(customtype.Table, customtype.Columns, sqlgraph.NewFieldSpec(customtype.FieldID, field.TypeInt))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -151,6 +159,7 @@ func (_u *CustomTypeUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	if _u.mutation.Tz3Cleared() {
 		_spec.ClearField(customtype.FieldTz3, field.TypeTime)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{customtype.Label}
@@ -166,9 +175,10 @@ func (_u *CustomTypeUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 // CustomTypeUpdateOne is the builder for updating a single CustomType entity.
 type CustomTypeUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *CustomTypeMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *CustomTypeMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetCustom sets the "custom" field.
@@ -276,6 +286,13 @@ func (_u *CustomTypeUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *CustomTypeUpdateOne) WithRetryOptions(opts ...any) *CustomTypeUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *CustomTypeUpdateOne) sqlSave(ctx context.Context) (_node *CustomType, err error) {
 	_spec := sqlgraph.NewUpdateSpec(customtype.Table, customtype.Columns, sqlgraph.NewFieldSpec(customtype.FieldID, field.TypeInt))
 	id, ok := _u.mutation.ID()
@@ -320,6 +337,7 @@ func (_u *CustomTypeUpdateOne) sqlSave(ctx context.Context) (_node *CustomType, 
 	if _u.mutation.Tz3Cleared() {
 		_spec.ClearField(customtype.FieldTz3, field.TypeTime)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &CustomType{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

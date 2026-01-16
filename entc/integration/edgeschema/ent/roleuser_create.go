@@ -23,9 +23,10 @@ import (
 // RoleUserCreate is the builder for creating a RoleUser entity.
 type RoleUserCreate struct {
 	config
-	mutation *RoleUserMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *RoleUserMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -144,6 +145,7 @@ func (_c *RoleUserCreate) createSpec() (*RoleUser, *sqlgraph.CreateSpec) {
 		_node = &RoleUser{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(roleuser.Table, nil)
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(roleuser.FieldCreatedAt, field.TypeTime, value)
@@ -184,6 +186,13 @@ func (_c *RoleUserCreate) createSpec() (*RoleUser, *sqlgraph.CreateSpec) {
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *RoleUserCreate) WithRetryOptions(opts ...any) *RoleUserCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -371,9 +380,10 @@ func (u *RoleUserUpsertOne) ExecX(ctx context.Context) {
 // RoleUserCreateBulk is the builder for creating many RoleUser entities in bulk.
 type RoleUserCreateBulk struct {
 	config
-	err      error
-	builders []*RoleUserCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*RoleUserCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the RoleUser entities in the database.
@@ -403,6 +413,7 @@ func (_c *RoleUserCreateBulk) Save(ctx context.Context) ([]*RoleUser, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -451,6 +462,13 @@ func (_c *RoleUserCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *RoleUserCreateBulk) WithRetryOptions(opts ...any) *RoleUserCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

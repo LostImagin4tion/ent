@@ -19,8 +19,9 @@ import (
 // ItemDelete is the builder for deleting a Item entity.
 type ItemDelete struct {
 	config
-	hooks    []Hook
-	mutation *ItemMutation
+	hooks       []Hook
+	mutation    *ItemMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the ItemDelete builder.
@@ -45,6 +46,7 @@ func (_d *ItemDelete) ExecX(ctx context.Context) int {
 
 func (_d *ItemDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(item.Table, sqlgraph.NewFieldSpec(item.FieldID, field.TypeString))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *ItemDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *ItemDelete) WithRetryOptions(opts ...any) *ItemDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // ItemDeleteOne is the builder for deleting a single Item entity.

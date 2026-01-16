@@ -19,8 +19,9 @@ import (
 // SpecDelete is the builder for deleting a Spec entity.
 type SpecDelete struct {
 	config
-	hooks    []Hook
-	mutation *SpecMutation
+	hooks       []Hook
+	mutation    *SpecMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the SpecDelete builder.
@@ -45,6 +46,7 @@ func (_d *SpecDelete) ExecX(ctx context.Context) int {
 
 func (_d *SpecDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(spec.Table, sqlgraph.NewFieldSpec(spec.FieldID, field.TypeInt))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *SpecDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *SpecDelete) WithRetryOptions(opts ...any) *SpecDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // SpecDeleteOne is the builder for deleting a single Spec entity.

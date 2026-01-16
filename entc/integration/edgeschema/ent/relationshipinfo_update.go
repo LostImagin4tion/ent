@@ -21,8 +21,9 @@ import (
 // RelationshipInfoUpdate is the builder for updating RelationshipInfo entities.
 type RelationshipInfoUpdate struct {
 	config
-	hooks    []Hook
-	mutation *RelationshipInfoMutation
+	hooks       []Hook
+	mutation    *RelationshipInfoMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the RelationshipInfoUpdate builder.
@@ -77,6 +78,13 @@ func (_u *RelationshipInfoUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *RelationshipInfoUpdate) WithRetryOptions(opts ...any) *RelationshipInfoUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *RelationshipInfoUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(relationshipinfo.Table, relationshipinfo.Columns, sqlgraph.NewFieldSpec(relationshipinfo.FieldID, field.TypeInt))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -89,6 +97,7 @@ func (_u *RelationshipInfoUpdate) sqlSave(ctx context.Context) (_node int, err e
 	if value, ok := _u.mutation.Text(); ok {
 		_spec.SetField(relationshipinfo.FieldText, field.TypeString, value)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{relationshipinfo.Label}
@@ -104,9 +113,10 @@ func (_u *RelationshipInfoUpdate) sqlSave(ctx context.Context) (_node int, err e
 // RelationshipInfoUpdateOne is the builder for updating a single RelationshipInfo entity.
 type RelationshipInfoUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *RelationshipInfoMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *RelationshipInfoMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetText sets the "text" field.
@@ -168,6 +178,13 @@ func (_u *RelationshipInfoUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *RelationshipInfoUpdateOne) WithRetryOptions(opts ...any) *RelationshipInfoUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *RelationshipInfoUpdateOne) sqlSave(ctx context.Context) (_node *RelationshipInfo, err error) {
 	_spec := sqlgraph.NewUpdateSpec(relationshipinfo.Table, relationshipinfo.Columns, sqlgraph.NewFieldSpec(relationshipinfo.FieldID, field.TypeInt))
 	id, ok := _u.mutation.ID()
@@ -197,6 +214,7 @@ func (_u *RelationshipInfoUpdateOne) sqlSave(ctx context.Context) (_node *Relati
 	if value, ok := _u.mutation.Text(); ok {
 		_spec.SetField(relationshipinfo.FieldText, field.TypeString, value)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &RelationshipInfo{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

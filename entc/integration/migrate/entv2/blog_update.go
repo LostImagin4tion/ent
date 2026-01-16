@@ -22,8 +22,9 @@ import (
 // BlogUpdate is the builder for updating Blog entities.
 type BlogUpdate struct {
 	config
-	hooks    []Hook
-	mutation *BlogMutation
+	hooks       []Hook
+	mutation    *BlogMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the BlogUpdate builder.
@@ -121,6 +122,13 @@ func (_u *BlogUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *BlogUpdate) WithRetryOptions(opts ...any) *BlogUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *BlogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(blog.Table, blog.Columns, sqlgraph.NewFieldSpec(blog.FieldID, field.TypeInt))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -181,6 +189,7 @@ func (_u *BlogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{blog.Label}
@@ -196,9 +205,10 @@ func (_u *BlogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // BlogUpdateOne is the builder for updating a single Blog entity.
 type BlogUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *BlogMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *BlogMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetOid sets the "oid" field.
@@ -303,6 +313,13 @@ func (_u *BlogUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *BlogUpdateOne) WithRetryOptions(opts ...any) *BlogUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *BlogUpdateOne) sqlSave(ctx context.Context) (_node *Blog, err error) {
 	_spec := sqlgraph.NewUpdateSpec(blog.Table, blog.Columns, sqlgraph.NewFieldSpec(blog.FieldID, field.TypeInt))
 	id, ok := _u.mutation.ID()
@@ -380,6 +397,7 @@ func (_u *BlogUpdateOne) sqlSave(ctx context.Context) (_node *Blog, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Blog{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

@@ -19,8 +19,9 @@ import (
 // MixinIDDelete is the builder for deleting a MixinID entity.
 type MixinIDDelete struct {
 	config
-	hooks    []Hook
-	mutation *MixinIDMutation
+	hooks       []Hook
+	mutation    *MixinIDMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the MixinIDDelete builder.
@@ -45,6 +46,7 @@ func (_d *MixinIDDelete) ExecX(ctx context.Context) int {
 
 func (_d *MixinIDDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(mixinid.Table, sqlgraph.NewFieldSpec(mixinid.FieldID, field.TypeUUID))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *MixinIDDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *MixinIDDelete) WithRetryOptions(opts ...any) *MixinIDDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // MixinIDDeleteOne is the builder for deleting a single MixinID entity.

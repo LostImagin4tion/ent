@@ -22,8 +22,9 @@ import (
 // NoteUpdate is the builder for updating Note entities.
 type NoteUpdate struct {
 	config
-	hooks    []Hook
-	mutation *NoteMutation
+	hooks       []Hook
+	mutation    *NoteMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the NoteUpdate builder.
@@ -145,6 +146,13 @@ func (_u *NoteUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *NoteUpdate) WithRetryOptions(opts ...any) *NoteUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *NoteUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(note.Table, note.Columns, sqlgraph.NewFieldSpec(note.FieldID, field.TypeString))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -234,6 +242,7 @@ func (_u *NoteUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{note.Label}
@@ -249,9 +258,10 @@ func (_u *NoteUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // NoteUpdateOne is the builder for updating a single Note entity.
 type NoteUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *NoteMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *NoteMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetText sets the "text" field.
@@ -380,6 +390,13 @@ func (_u *NoteUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *NoteUpdateOne) WithRetryOptions(opts ...any) *NoteUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *NoteUpdateOne) sqlSave(ctx context.Context) (_node *Note, err error) {
 	_spec := sqlgraph.NewUpdateSpec(note.Table, note.Columns, sqlgraph.NewFieldSpec(note.FieldID, field.TypeString))
 	id, ok := _u.mutation.ID()
@@ -486,6 +503,7 @@ func (_u *NoteUpdateOne) sqlSave(ctx context.Context) (_node *Note, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Note{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

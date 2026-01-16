@@ -22,8 +22,9 @@ import (
 // DocUpdate is the builder for updating Doc entities.
 type DocUpdate struct {
 	config
-	hooks    []Hook
-	mutation *DocMutation
+	hooks       []Hook
+	mutation    *DocMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the DocUpdate builder.
@@ -181,6 +182,13 @@ func (_u *DocUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *DocUpdate) WithRetryOptions(opts ...any) *DocUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *DocUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(doc.Table, doc.Columns, sqlgraph.NewFieldSpec(doc.FieldID, field.TypeString))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -315,6 +323,7 @@ func (_u *DocUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{doc.Label}
@@ -330,9 +339,10 @@ func (_u *DocUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // DocUpdateOne is the builder for updating a single Doc entity.
 type DocUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *DocMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *DocMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetText sets the "text" field.
@@ -497,6 +507,13 @@ func (_u *DocUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *DocUpdateOne) WithRetryOptions(opts ...any) *DocUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *DocUpdateOne) sqlSave(ctx context.Context) (_node *Doc, err error) {
 	_spec := sqlgraph.NewUpdateSpec(doc.Table, doc.Columns, sqlgraph.NewFieldSpec(doc.FieldID, field.TypeString))
 	id, ok := _u.mutation.ID()
@@ -648,6 +665,7 @@ func (_u *DocUpdateOne) sqlSave(ctx context.Context) (_node *Doc, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Doc{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

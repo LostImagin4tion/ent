@@ -18,8 +18,9 @@ import (
 // ZooCreate is the builder for creating a Zoo entity.
 type ZooCreate struct {
 	config
-	mutation *ZooMutation
-	hooks    []Hook
+	mutation    *ZooMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetID sets the "id" field.
@@ -90,6 +91,7 @@ func (_c *ZooCreate) createSpec() (*Zoo, *sqlgraph.CreateSpec) {
 		_node = &Zoo{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(zoo.Table, sqlgraph.NewFieldSpec(zoo.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = id
@@ -97,11 +99,19 @@ func (_c *ZooCreate) createSpec() (*Zoo, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *ZooCreate) WithRetryOptions(opts ...any) *ZooCreate {
+	_c.retryConfig.Options = opts
+	return _c
+}
+
 // ZooCreateBulk is the builder for creating many Zoo entities in bulk.
 type ZooCreateBulk struct {
 	config
-	err      error
-	builders []*ZooCreate
+	err         error
+	builders    []*ZooCreate
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Save creates the Zoo entities in the database.
@@ -130,6 +140,7 @@ func (_c *ZooCreateBulk) Save(ctx context.Context) ([]*Zoo, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -182,4 +193,11 @@ func (_c *ZooCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *ZooCreateBulk) WithRetryOptions(opts ...any) *ZooCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }

@@ -21,9 +21,10 @@ import (
 // ItemUpdate is the builder for updating Item entities.
 type ItemUpdate struct {
 	config
-	hooks     []Hook
-	mutation  *ItemMutation
-	modifiers []func(*sql.UpdateBuilder)
+	hooks       []Hook
+	mutation    *ItemMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the ItemUpdate builder.
@@ -100,6 +101,13 @@ func (_u *ItemUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *ItemUpdat
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *ItemUpdate) WithRetryOptions(opts ...any) *ItemUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *ItemUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -119,6 +127,7 @@ func (_u *ItemUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		_spec.ClearField(item.FieldText, field.TypeString)
 	}
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{item.Label}
@@ -134,10 +143,11 @@ func (_u *ItemUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // ItemUpdateOne is the builder for updating a single Item entity.
 type ItemUpdateOne struct {
 	config
-	fields    []string
-	hooks     []Hook
-	mutation  *ItemMutation
-	modifiers []func(*sql.UpdateBuilder)
+	fields      []string
+	hooks       []Hook
+	mutation    *ItemMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetText sets the "text" field.
@@ -221,6 +231,13 @@ func (_u *ItemUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *ItemUp
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *ItemUpdateOne) WithRetryOptions(opts ...any) *ItemUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *ItemUpdateOne) sqlSave(ctx context.Context) (_node *Item, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -257,6 +274,7 @@ func (_u *ItemUpdateOne) sqlSave(ctx context.Context) (_node *Item, err error) {
 		_spec.ClearField(item.FieldText, field.TypeString)
 	}
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Item{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

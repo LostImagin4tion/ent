@@ -21,9 +21,10 @@ import (
 // SpecCreate is the builder for creating a Spec entity.
 type SpecCreate struct {
 	config
-	mutation *SpecMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *SpecMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // AddCardIDs adds the "card" edge to the Card entity by IDs.
@@ -101,6 +102,7 @@ func (_c *SpecCreate) createSpec() (*Spec, *sqlgraph.CreateSpec) {
 		_node = &Spec{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(spec.Table, sqlgraph.NewFieldSpec(spec.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	if nodes := _c.mutation.CardIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -119,6 +121,13 @@ func (_c *SpecCreate) createSpec() (*Spec, *sqlgraph.CreateSpec) {
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *SpecCreate) WithRetryOptions(opts ...any) *SpecCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -240,9 +249,10 @@ func (u *SpecUpsertOne) IDX(ctx context.Context) int {
 // SpecCreateBulk is the builder for creating many Spec entities in bulk.
 type SpecCreateBulk struct {
 	config
-	err      error
-	builders []*SpecCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*SpecCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the Spec entities in the database.
@@ -271,6 +281,7 @@ func (_c *SpecCreateBulk) Save(ctx context.Context) ([]*Spec, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -324,6 +335,13 @@ func (_c *SpecCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *SpecCreateBulk) WithRetryOptions(opts ...any) *SpecCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

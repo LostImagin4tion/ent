@@ -19,8 +19,9 @@ import (
 // IntSIDDelete is the builder for deleting a IntSID entity.
 type IntSIDDelete struct {
 	config
-	hooks    []Hook
-	mutation *IntSIDMutation
+	hooks       []Hook
+	mutation    *IntSIDMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the IntSIDDelete builder.
@@ -45,6 +46,7 @@ func (_d *IntSIDDelete) ExecX(ctx context.Context) int {
 
 func (_d *IntSIDDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(intsid.Table, sqlgraph.NewFieldSpec(intsid.FieldID, field.TypeInt64))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *IntSIDDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *IntSIDDelete) WithRetryOptions(opts ...any) *IntSIDDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // IntSIDDeleteOne is the builder for deleting a single IntSID entity.

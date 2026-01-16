@@ -20,9 +20,10 @@ import (
 // APICreate is the builder for creating a Api entity.
 type APICreate struct {
 	config
-	mutation *APIMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *APIMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Mutation returns the APIMutation object of the builder.
@@ -85,8 +86,16 @@ func (_c *APICreate) createSpec() (*Api, *sqlgraph.CreateSpec) {
 		_node = &Api{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(api.Table, sqlgraph.NewFieldSpec(api.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *APICreate) WithRetryOptions(opts ...any) *APICreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -208,9 +217,10 @@ func (u *ApiUpsertOne) IDX(ctx context.Context) int {
 // APICreateBulk is the builder for creating many Api entities in bulk.
 type APICreateBulk struct {
 	config
-	err      error
-	builders []*APICreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*APICreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the Api entities in the database.
@@ -239,6 +249,7 @@ func (_c *APICreateBulk) Save(ctx context.Context) ([]*Api, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -292,6 +303,13 @@ func (_c *APICreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *APICreateBulk) WithRetryOptions(opts ...any) *APICreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

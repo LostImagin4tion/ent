@@ -22,9 +22,10 @@ import (
 // LicenseUpdate is the builder for updating License entities.
 type LicenseUpdate struct {
 	config
-	hooks     []Hook
-	mutation  *LicenseMutation
-	modifiers []func(*sql.UpdateBuilder)
+	hooks       []Hook
+	mutation    *LicenseMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the LicenseUpdate builder.
@@ -86,6 +87,13 @@ func (_u *LicenseUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *Licens
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *LicenseUpdate) WithRetryOptions(opts ...any) *LicenseUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *LicenseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(license.Table, license.Columns, sqlgraph.NewFieldSpec(license.FieldID, field.TypeInt))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -99,6 +107,7 @@ func (_u *LicenseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		_spec.SetField(license.FieldUpdateTime, field.TypeTime, value)
 	}
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{license.Label}
@@ -114,10 +123,11 @@ func (_u *LicenseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // LicenseUpdateOne is the builder for updating a single License entity.
 type LicenseUpdateOne struct {
 	config
-	fields    []string
-	hooks     []Hook
-	mutation  *LicenseMutation
-	modifiers []func(*sql.UpdateBuilder)
+	fields      []string
+	hooks       []Hook
+	mutation    *LicenseMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetUpdateTime sets the "update_time" field.
@@ -186,6 +196,13 @@ func (_u *LicenseUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *Lic
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *LicenseUpdateOne) WithRetryOptions(opts ...any) *LicenseUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *LicenseUpdateOne) sqlSave(ctx context.Context) (_node *License, err error) {
 	_spec := sqlgraph.NewUpdateSpec(license.Table, license.Columns, sqlgraph.NewFieldSpec(license.FieldID, field.TypeInt))
 	id, ok := _u.mutation.ID()
@@ -216,6 +233,7 @@ func (_u *LicenseUpdateOne) sqlSave(ctx context.Context) (_node *License, err er
 		_spec.SetField(license.FieldUpdateTime, field.TypeTime, value)
 	}
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	_node = &License{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

@@ -19,8 +19,9 @@ import (
 // NodeDelete is the builder for deleting a Node entity.
 type NodeDelete struct {
 	config
-	hooks    []Hook
-	mutation *NodeMutation
+	hooks       []Hook
+	mutation    *NodeMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the NodeDelete builder.
@@ -45,6 +46,7 @@ func (_d *NodeDelete) ExecX(ctx context.Context) int {
 
 func (_d *NodeDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(node.Table, sqlgraph.NewFieldSpec(node.FieldID, field.TypeInt))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *NodeDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *NodeDelete) WithRetryOptions(opts ...any) *NodeDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // NodeDeleteOne is the builder for deleting a single Node entity.

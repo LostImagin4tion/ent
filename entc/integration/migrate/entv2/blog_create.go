@@ -21,8 +21,9 @@ import (
 // BlogCreate is the builder for creating a Blog entity.
 type BlogCreate struct {
 	config
-	mutation *BlogMutation
-	hooks    []Hook
+	mutation    *BlogMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetOid sets the "oid" field.
@@ -87,7 +88,7 @@ func (_c *BlogCreate) ExecX(ctx context.Context) {
 // check runs all checks and user-defined validators on the builder.
 func (_c *BlogCreate) check() error {
 	switch _c.driver.Dialect() {
-	case dialect.MySQL, dialect.SQLite:
+	case dialect.MySQL, dialect.SQLite, dialect.YDB:
 		if _, ok := _c.mutation.Oid(); !ok {
 			return &ValidationError{Name: "oid", err: errors.New(`entv2: missing required field "Blog.oid"`)}
 		}
@@ -120,6 +121,7 @@ func (_c *BlogCreate) createSpec() (*Blog, *sqlgraph.CreateSpec) {
 		_node = &Blog{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(blog.Table, sqlgraph.NewFieldSpec(blog.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = id
@@ -147,11 +149,19 @@ func (_c *BlogCreate) createSpec() (*Blog, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *BlogCreate) WithRetryOptions(opts ...any) *BlogCreate {
+	_c.retryConfig.Options = opts
+	return _c
+}
+
 // BlogCreateBulk is the builder for creating many Blog entities in bulk.
 type BlogCreateBulk struct {
 	config
-	err      error
-	builders []*BlogCreate
+	err         error
+	builders    []*BlogCreate
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Save creates the Blog entities in the database.
@@ -180,6 +190,7 @@ func (_c *BlogCreateBulk) Save(ctx context.Context) ([]*Blog, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -232,4 +243,11 @@ func (_c *BlogCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *BlogCreateBulk) WithRetryOptions(opts ...any) *BlogCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }

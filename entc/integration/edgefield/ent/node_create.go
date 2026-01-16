@@ -19,8 +19,9 @@ import (
 // NodeCreate is the builder for creating a Node entity.
 type NodeCreate struct {
 	config
-	mutation *NodeMutation
-	hooks    []Hook
+	mutation    *NodeMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetValue sets the "value" field.
@@ -147,6 +148,7 @@ func (_c *NodeCreate) createSpec() (*Node, *sqlgraph.CreateSpec) {
 		_node = &Node{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(node.Table, sqlgraph.NewFieldSpec(node.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	if value, ok := _c.mutation.Value(); ok {
 		_spec.SetField(node.FieldValue, field.TypeInt, value)
 		_node.Value = value
@@ -187,11 +189,19 @@ func (_c *NodeCreate) createSpec() (*Node, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *NodeCreate) WithRetryOptions(opts ...any) *NodeCreate {
+	_c.retryConfig.Options = opts
+	return _c
+}
+
 // NodeCreateBulk is the builder for creating many Node entities in bulk.
 type NodeCreateBulk struct {
 	config
-	err      error
-	builders []*NodeCreate
+	err         error
+	builders    []*NodeCreate
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Save creates the Node entities in the database.
@@ -221,6 +231,7 @@ func (_c *NodeCreateBulk) Save(ctx context.Context) ([]*Node, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -273,4 +284,11 @@ func (_c *NodeCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *NodeCreateBulk) WithRetryOptions(opts ...any) *NodeCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }

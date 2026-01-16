@@ -24,8 +24,9 @@ import (
 // InfoUpdate is the builder for updating Info entities.
 type InfoUpdate struct {
 	config
-	hooks    []Hook
-	mutation *InfoMutation
+	hooks       []Hook
+	mutation    *InfoMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the InfoUpdate builder.
@@ -103,6 +104,13 @@ func (_u *InfoUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *InfoUpdate) WithRetryOptions(opts ...any) *InfoUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *InfoUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(info.Table, info.Columns, sqlgraph.NewFieldSpec(info.FieldID, field.TypeInt))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -149,6 +157,7 @@ func (_u *InfoUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{info.Label}
@@ -164,9 +173,10 @@ func (_u *InfoUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // InfoUpdateOne is the builder for updating a single Info entity.
 type InfoUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *InfoMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *InfoMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetContent sets the "content" field.
@@ -251,6 +261,13 @@ func (_u *InfoUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *InfoUpdateOne) WithRetryOptions(opts ...any) *InfoUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *InfoUpdateOne) sqlSave(ctx context.Context) (_node *Info, err error) {
 	_spec := sqlgraph.NewUpdateSpec(info.Table, info.Columns, sqlgraph.NewFieldSpec(info.FieldID, field.TypeInt))
 	id, ok := _u.mutation.ID()
@@ -314,6 +331,7 @@ func (_u *InfoUpdateOne) sqlSave(ctx context.Context) (_node *Info, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Info{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

@@ -23,11 +23,12 @@ import (
 // CardQuery is the builder for querying Card entities.
 type CardQuery struct {
 	config
-	ctx        *QueryContext
-	order      []card.OrderOption
-	inters     []Interceptor
-	predicates []predicate.Card
-	withOwner  *UserQuery
+	ctx         *QueryContext
+	order       []card.OrderOption
+	inters      []Interceptor
+	predicates  []predicate.Card
+	withOwner   *UserQuery
+	retryConfig sqlgraph.RetryConfig
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -387,6 +388,7 @@ func (_q *CardQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Card, e
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	_spec.RetryConfig = _q.retryConfig
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -437,6 +439,7 @@ func (_q *CardQuery) loadOwner(ctx context.Context, query *UserQuery, nodes []*C
 
 func (_q *CardQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
+	_spec.RetryConfig = _q.retryConfig
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
 		_spec.Unique = _q.ctx.Unique != nil && *_q.ctx.Unique
@@ -517,6 +520,13 @@ func (_q *CardQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// WithRetryOptions sets the retry options for the query operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_q *CardQuery) WithRetryOptions(opts ...any) *CardQuery {
+	_q.retryConfig.Options = opts
+	return _q
 }
 
 // CardGroupBy is the group-by builder for Card entities.

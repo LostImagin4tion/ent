@@ -26,12 +26,13 @@ import (
 // TeamQuery is the builder for querying Team entities.
 type TeamQuery struct {
 	config
-	ctx        *QueryContext
-	order      []team.OrderOption
-	inters     []Interceptor
-	predicates []predicate.Team
-	withTasks  *TaskQuery
-	withUsers  *UserQuery
+	ctx         *QueryContext
+	order       []team.OrderOption
+	inters      []Interceptor
+	predicates  []predicate.Team
+	withTasks   *TaskQuery
+	withUsers   *UserQuery
+	retryConfig sqlgraph.RetryConfig
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -432,6 +433,7 @@ func (_q *TeamQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Team, e
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	_spec.RetryConfig = _q.retryConfig
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -583,6 +585,7 @@ func (_q *TeamQuery) loadUsers(ctx context.Context, query *UserQuery, nodes []*T
 
 func (_q *TeamQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
+	_spec.RetryConfig = _q.retryConfig
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
 		_spec.Unique = _q.ctx.Unique != nil && *_q.ctx.Unique
@@ -660,6 +663,13 @@ func (_q *TeamQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// WithRetryOptions sets the retry options for the query operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_q *TeamQuery) WithRetryOptions(opts ...any) *TeamQuery {
+	_q.retryConfig.Options = opts
+	return _q
 }
 
 // TeamGroupBy is the group-by builder for Team entities.

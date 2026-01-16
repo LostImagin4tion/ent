@@ -22,9 +22,10 @@ import (
 // RelationshipCreate is the builder for creating a Relationship entity.
 type RelationshipCreate struct {
 	config
-	mutation *RelationshipMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *RelationshipMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // SetWeight sets the "weight" field.
@@ -165,6 +166,7 @@ func (_c *RelationshipCreate) createSpec() (*Relationship, *sqlgraph.CreateSpec)
 		_node = &Relationship{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(relationship.Table, nil)
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	if value, ok := _c.mutation.Weight(); ok {
 		_spec.SetField(relationship.FieldWeight, field.TypeInt, value)
@@ -222,6 +224,13 @@ func (_c *RelationshipCreate) createSpec() (*Relationship, *sqlgraph.CreateSpec)
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *RelationshipCreate) WithRetryOptions(opts ...any) *RelationshipCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -461,9 +470,10 @@ func (u *RelationshipUpsertOne) ExecX(ctx context.Context) {
 // RelationshipCreateBulk is the builder for creating many Relationship entities in bulk.
 type RelationshipCreateBulk struct {
 	config
-	err      error
-	builders []*RelationshipCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*RelationshipCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the Relationship entities in the database.
@@ -493,6 +503,7 @@ func (_c *RelationshipCreateBulk) Save(ctx context.Context) ([]*Relationship, er
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -541,6 +552,13 @@ func (_c *RelationshipCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *RelationshipCreateBulk) WithRetryOptions(opts ...any) *RelationshipCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

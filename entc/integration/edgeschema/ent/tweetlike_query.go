@@ -24,12 +24,13 @@ import (
 // TweetLikeQuery is the builder for querying TweetLike entities.
 type TweetLikeQuery struct {
 	config
-	ctx        *QueryContext
-	order      []tweetlike.OrderOption
-	inters     []Interceptor
-	predicates []predicate.TweetLike
-	withTweet  *TweetQuery
-	withUser   *UserQuery
+	ctx         *QueryContext
+	order       []tweetlike.OrderOption
+	inters      []Interceptor
+	predicates  []predicate.TweetLike
+	withTweet   *TweetQuery
+	withUser    *UserQuery
+	retryConfig sqlgraph.RetryConfig
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -358,6 +359,7 @@ func (_q *TweetLikeQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Tw
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	_spec.RetryConfig = _q.retryConfig
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -443,6 +445,7 @@ func (_q *TweetLikeQuery) loadUser(ctx context.Context, query *UserQuery, nodes 
 
 func (_q *TweetLikeQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
+	_spec.RetryConfig = _q.retryConfig
 	_spec.Unique = false
 	_spec.Node.Columns = nil
 	return sqlgraph.CountNodes(ctx, _q.driver, _spec)
@@ -521,6 +524,13 @@ func (_q *TweetLikeQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// WithRetryOptions sets the retry options for the query operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_q *TweetLikeQuery) WithRetryOptions(opts ...any) *TweetLikeQuery {
+	_q.retryConfig.Options = opts
+	return _q
 }
 
 // TweetLikeGroupBy is the group-by builder for TweetLike entities.

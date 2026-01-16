@@ -22,9 +22,10 @@ import (
 // FriendshipCreate is the builder for creating a Friendship entity.
 type FriendshipCreate struct {
 	config
-	mutation *FriendshipMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *FriendshipMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // SetWeight sets the "weight" field.
@@ -168,6 +169,7 @@ func (_c *FriendshipCreate) createSpec() (*Friendship, *sqlgraph.CreateSpec) {
 		_node = &Friendship{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(friendship.Table, sqlgraph.NewFieldSpec(friendship.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	if value, ok := _c.mutation.Weight(); ok {
 		_spec.SetField(friendship.FieldWeight, field.TypeInt, value)
@@ -212,6 +214,13 @@ func (_c *FriendshipCreate) createSpec() (*Friendship, *sqlgraph.CreateSpec) {
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *FriendshipCreate) WithRetryOptions(opts ...any) *FriendshipCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -412,9 +421,10 @@ func (u *FriendshipUpsertOne) IDX(ctx context.Context) int {
 // FriendshipCreateBulk is the builder for creating many Friendship entities in bulk.
 type FriendshipCreateBulk struct {
 	config
-	err      error
-	builders []*FriendshipCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*FriendshipCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the Friendship entities in the database.
@@ -444,6 +454,7 @@ func (_c *FriendshipCreateBulk) Save(ctx context.Context) ([]*Friendship, error)
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -497,6 +508,13 @@ func (_c *FriendshipCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *FriendshipCreateBulk) WithRetryOptions(opts ...any) *FriendshipCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

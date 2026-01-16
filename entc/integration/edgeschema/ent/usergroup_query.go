@@ -24,12 +24,13 @@ import (
 // UserGroupQuery is the builder for querying UserGroup entities.
 type UserGroupQuery struct {
 	config
-	ctx        *QueryContext
-	order      []usergroup.OrderOption
-	inters     []Interceptor
-	predicates []predicate.UserGroup
-	withUser   *UserQuery
-	withGroup  *GroupQuery
+	ctx         *QueryContext
+	order       []usergroup.OrderOption
+	inters      []Interceptor
+	predicates  []predicate.UserGroup
+	withUser    *UserQuery
+	withGroup   *GroupQuery
+	retryConfig sqlgraph.RetryConfig
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -424,6 +425,7 @@ func (_q *UserGroupQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Us
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	_spec.RetryConfig = _q.retryConfig
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -509,6 +511,7 @@ func (_q *UserGroupQuery) loadGroup(ctx context.Context, query *GroupQuery, node
 
 func (_q *UserGroupQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
+	_spec.RetryConfig = _q.retryConfig
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
 		_spec.Unique = _q.ctx.Unique != nil && *_q.ctx.Unique
@@ -592,6 +595,13 @@ func (_q *UserGroupQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// WithRetryOptions sets the retry options for the query operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_q *UserGroupQuery) WithRetryOptions(opts ...any) *UserGroupQuery {
+	_q.retryConfig.Options = opts
+	return _q
 }
 
 // UserGroupGroupBy is the group-by builder for UserGroup entities.

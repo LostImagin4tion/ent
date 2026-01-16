@@ -23,8 +23,9 @@ import (
 // SessionUpdate is the builder for updating Session entities.
 type SessionUpdate struct {
 	config
-	hooks    []Hook
-	mutation *SessionMutation
+	hooks       []Hook
+	mutation    *SessionMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the SessionUpdate builder.
@@ -90,6 +91,13 @@ func (_u *SessionUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *SessionUpdate) WithRetryOptions(opts ...any) *SessionUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *SessionUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(session.Table, session.Columns, sqlgraph.NewFieldSpec(session.FieldID, field.TypeBytes))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -128,6 +136,7 @@ func (_u *SessionUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{session.Label}
@@ -143,9 +152,10 @@ func (_u *SessionUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // SessionUpdateOne is the builder for updating a single Session entity.
 type SessionUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *SessionMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *SessionMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetDeviceID sets the "device" edge to the Device entity by ID.
@@ -218,6 +228,13 @@ func (_u *SessionUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *SessionUpdateOne) WithRetryOptions(opts ...any) *SessionUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *SessionUpdateOne) sqlSave(ctx context.Context) (_node *Session, err error) {
 	_spec := sqlgraph.NewUpdateSpec(session.Table, session.Columns, sqlgraph.NewFieldSpec(session.FieldID, field.TypeBytes))
 	id, ok := _u.mutation.ID()
@@ -273,6 +290,7 @@ func (_u *SessionUpdateOne) sqlSave(ctx context.Context) (_node *Session, err er
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Session{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

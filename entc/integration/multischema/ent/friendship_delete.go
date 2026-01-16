@@ -20,8 +20,9 @@ import (
 // FriendshipDelete is the builder for deleting a Friendship entity.
 type FriendshipDelete struct {
 	config
-	hooks    []Hook
-	mutation *FriendshipMutation
+	hooks       []Hook
+	mutation    *FriendshipMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the FriendshipDelete builder.
@@ -48,6 +49,7 @@ func (_d *FriendshipDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(friendship.Table, sqlgraph.NewFieldSpec(friendship.FieldID, field.TypeInt))
 	_spec.Node.Schema = _d.schemaConfig.Friendship
 	ctx = internal.NewSchemaConfigContext(ctx, _d.schemaConfig)
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -61,6 +63,13 @@ func (_d *FriendshipDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *FriendshipDelete) WithRetryOptions(opts ...any) *FriendshipDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // FriendshipDeleteOne is the builder for deleting a single Friendship entity.

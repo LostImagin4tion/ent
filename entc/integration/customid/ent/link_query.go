@@ -23,10 +23,11 @@ import (
 // LinkQuery is the builder for querying Link entities.
 type LinkQuery struct {
 	config
-	ctx        *QueryContext
-	order      []link.OrderOption
-	inters     []Interceptor
-	predicates []predicate.Link
+	ctx         *QueryContext
+	order       []link.OrderOption
+	inters      []Interceptor
+	predicates  []predicate.Link
+	retryConfig sqlgraph.RetryConfig
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -348,6 +349,7 @@ func (_q *LinkQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Link, e
 		nodes = append(nodes, node)
 		return node.assignValues(columns, values)
 	}
+	_spec.RetryConfig = _q.retryConfig
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -362,6 +364,7 @@ func (_q *LinkQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Link, e
 
 func (_q *LinkQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
+	_spec.RetryConfig = _q.retryConfig
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
 		_spec.Unique = _q.ctx.Unique != nil && *_q.ctx.Unique
@@ -439,6 +442,13 @@ func (_q *LinkQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// WithRetryOptions sets the retry options for the query operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_q *LinkQuery) WithRetryOptions(opts ...any) *LinkQuery {
+	_q.retryConfig.Options = opts
+	return _q
 }
 
 // LinkGroupBy is the group-by builder for Link entities.

@@ -21,8 +21,9 @@ import (
 // MixinIDUpdate is the builder for updating MixinID entities.
 type MixinIDUpdate struct {
 	config
-	hooks    []Hook
-	mutation *MixinIDMutation
+	hooks       []Hook
+	mutation    *MixinIDMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the MixinIDUpdate builder.
@@ -91,6 +92,13 @@ func (_u *MixinIDUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *MixinIDUpdate) WithRetryOptions(opts ...any) *MixinIDUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *MixinIDUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(mixinid.Table, mixinid.Columns, sqlgraph.NewFieldSpec(mixinid.FieldID, field.TypeUUID))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -106,6 +114,7 @@ func (_u *MixinIDUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.MixinField(); ok {
 		_spec.SetField(mixinid.FieldMixinField, field.TypeString, value)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{mixinid.Label}
@@ -121,9 +130,10 @@ func (_u *MixinIDUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // MixinIDUpdateOne is the builder for updating a single MixinID entity.
 type MixinIDUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *MixinIDMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *MixinIDMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetSomeField sets the "some_field" field.
@@ -199,6 +209,13 @@ func (_u *MixinIDUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *MixinIDUpdateOne) WithRetryOptions(opts ...any) *MixinIDUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *MixinIDUpdateOne) sqlSave(ctx context.Context) (_node *MixinID, err error) {
 	_spec := sqlgraph.NewUpdateSpec(mixinid.Table, mixinid.Columns, sqlgraph.NewFieldSpec(mixinid.FieldID, field.TypeUUID))
 	id, ok := _u.mutation.ID()
@@ -231,6 +248,7 @@ func (_u *MixinIDUpdateOne) sqlSave(ctx context.Context) (_node *MixinID, err er
 	if value, ok := _u.mutation.MixinField(); ok {
 		_spec.SetField(mixinid.FieldMixinField, field.TypeString, value)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &MixinID{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

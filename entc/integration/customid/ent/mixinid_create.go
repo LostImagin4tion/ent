@@ -22,9 +22,10 @@ import (
 // MixinIDCreate is the builder for creating a MixinID entity.
 type MixinIDCreate struct {
 	config
-	mutation *MixinIDMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *MixinIDMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // SetSomeField sets the "some_field" field.
@@ -133,6 +134,7 @@ func (_c *MixinIDCreate) createSpec() (*MixinID, *sqlgraph.CreateSpec) {
 		_node = &MixinID{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(mixinid.Table, sqlgraph.NewFieldSpec(mixinid.FieldID, field.TypeUUID))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
@@ -147,6 +149,13 @@ func (_c *MixinIDCreate) createSpec() (*MixinID, *sqlgraph.CreateSpec) {
 		_node.MixinField = value
 	}
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *MixinIDCreate) WithRetryOptions(opts ...any) *MixinIDCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -339,9 +348,10 @@ func (u *MixinIDUpsertOne) IDX(ctx context.Context) uuid.UUID {
 // MixinIDCreateBulk is the builder for creating many MixinID entities in bulk.
 type MixinIDCreateBulk struct {
 	config
-	err      error
-	builders []*MixinIDCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*MixinIDCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the MixinID entities in the database.
@@ -371,6 +381,7 @@ func (_c *MixinIDCreateBulk) Save(ctx context.Context) ([]*MixinID, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -420,6 +431,13 @@ func (_c *MixinIDCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *MixinIDCreateBulk) WithRetryOptions(opts ...any) *MixinIDCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

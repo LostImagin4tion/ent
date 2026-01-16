@@ -22,9 +22,10 @@ import (
 // ParentUpdate is the builder for updating Parent entities.
 type ParentUpdate struct {
 	config
-	hooks     []Hook
-	mutation  *ParentMutation
-	modifiers []func(*sql.UpdateBuilder)
+	hooks       []Hook
+	mutation    *ParentMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the ParentUpdate builder.
@@ -96,6 +97,13 @@ func (_u *ParentUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *ParentU
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *ParentUpdate) WithRetryOptions(opts ...any) *ParentUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *ParentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -114,6 +122,7 @@ func (_u *ParentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec.Node.Schema = _u.schemaConfig.Parent
 	ctx = internal.NewSchemaConfigContext(ctx, _u.schemaConfig)
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{parent.Label}
@@ -129,10 +138,11 @@ func (_u *ParentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // ParentUpdateOne is the builder for updating a single Parent entity.
 type ParentUpdateOne struct {
 	config
-	fields    []string
-	hooks     []Hook
-	mutation  *ParentMutation
-	modifiers []func(*sql.UpdateBuilder)
+	fields      []string
+	hooks       []Hook
+	mutation    *ParentMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetByAdoption sets the "by_adoption" field.
@@ -211,6 +221,13 @@ func (_u *ParentUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *Pare
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *ParentUpdateOne) WithRetryOptions(opts ...any) *ParentUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *ParentUpdateOne) sqlSave(ctx context.Context) (_node *Parent, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -246,6 +263,7 @@ func (_u *ParentUpdateOne) sqlSave(ctx context.Context) (_node *Parent, err erro
 	_spec.Node.Schema = _u.schemaConfig.Parent
 	ctx = internal.NewSchemaConfigContext(ctx, _u.schemaConfig)
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Parent{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

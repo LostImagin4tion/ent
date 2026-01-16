@@ -20,9 +20,10 @@ import (
 // GoodsCreate is the builder for creating a Goods entity.
 type GoodsCreate struct {
 	config
-	mutation *GoodsMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *GoodsMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Mutation returns the GoodsMutation object of the builder.
@@ -85,8 +86,16 @@ func (_c *GoodsCreate) createSpec() (*Goods, *sqlgraph.CreateSpec) {
 		_node = &Goods{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(goods.Table, sqlgraph.NewFieldSpec(goods.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *GoodsCreate) WithRetryOptions(opts ...any) *GoodsCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -208,9 +217,10 @@ func (u *GoodsUpsertOne) IDX(ctx context.Context) int {
 // GoodsCreateBulk is the builder for creating many Goods entities in bulk.
 type GoodsCreateBulk struct {
 	config
-	err      error
-	builders []*GoodsCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*GoodsCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the Goods entities in the database.
@@ -239,6 +249,7 @@ func (_c *GoodsCreateBulk) Save(ctx context.Context) ([]*Goods, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -292,6 +303,13 @@ func (_c *GoodsCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *GoodsCreateBulk) WithRetryOptions(opts ...any) *GoodsCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

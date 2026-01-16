@@ -21,8 +21,9 @@ import (
 // OtherUpdate is the builder for updating Other entities.
 type OtherUpdate struct {
 	config
-	hooks    []Hook
-	mutation *OtherMutation
+	hooks       []Hook
+	mutation    *OtherMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the OtherUpdate builder.
@@ -63,6 +64,13 @@ func (_u *OtherUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *OtherUpdate) WithRetryOptions(opts ...any) *OtherUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *OtherUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(other.Table, other.Columns, sqlgraph.NewFieldSpec(other.FieldID, field.TypeOther))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -72,6 +80,7 @@ func (_u *OtherUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			}
 		}
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{other.Label}
@@ -87,9 +96,10 @@ func (_u *OtherUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // OtherUpdateOne is the builder for updating a single Other entity.
 type OtherUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *OtherMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *OtherMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Mutation returns the OtherMutation object of the builder.
@@ -137,6 +147,13 @@ func (_u *OtherUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *OtherUpdateOne) WithRetryOptions(opts ...any) *OtherUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *OtherUpdateOne) sqlSave(ctx context.Context) (_node *Other, err error) {
 	_spec := sqlgraph.NewUpdateSpec(other.Table, other.Columns, sqlgraph.NewFieldSpec(other.FieldID, field.TypeOther))
 	id, ok := _u.mutation.ID()
@@ -163,6 +180,7 @@ func (_u *OtherUpdateOne) sqlSave(ctx context.Context) (_node *Other, err error)
 			}
 		}
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Other{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

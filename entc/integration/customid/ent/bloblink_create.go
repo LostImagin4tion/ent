@@ -23,9 +23,10 @@ import (
 // BlobLinkCreate is the builder for creating a BlobLink entity.
 type BlobLinkCreate struct {
 	config
-	mutation *BlobLinkMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *BlobLinkMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -144,6 +145,7 @@ func (_c *BlobLinkCreate) createSpec() (*BlobLink, *sqlgraph.CreateSpec) {
 		_node = &BlobLink{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(bloblink.Table, nil)
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(bloblink.FieldCreatedAt, field.TypeTime, value)
@@ -184,6 +186,13 @@ func (_c *BlobLinkCreate) createSpec() (*BlobLink, *sqlgraph.CreateSpec) {
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *BlobLinkCreate) WithRetryOptions(opts ...any) *BlobLinkCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -371,9 +380,10 @@ func (u *BlobLinkUpsertOne) ExecX(ctx context.Context) {
 // BlobLinkCreateBulk is the builder for creating many BlobLink entities in bulk.
 type BlobLinkCreateBulk struct {
 	config
-	err      error
-	builders []*BlobLinkCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*BlobLinkCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the BlobLink entities in the database.
@@ -403,6 +413,7 @@ func (_c *BlobLinkCreateBulk) Save(ctx context.Context) ([]*BlobLink, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -451,6 +462,13 @@ func (_c *BlobLinkCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *BlobLinkCreateBulk) WithRetryOptions(opts ...any) *BlobLinkCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

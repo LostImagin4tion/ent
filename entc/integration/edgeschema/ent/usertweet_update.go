@@ -24,8 +24,9 @@ import (
 // UserTweetUpdate is the builder for updating UserTweet entities.
 type UserTweetUpdate struct {
 	config
-	hooks    []Hook
-	mutation *UserTweetMutation
+	hooks       []Hook
+	mutation    *UserTweetMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the UserTweetUpdate builder.
@@ -141,6 +142,13 @@ func (_u *UserTweetUpdate) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *UserTweetUpdate) WithRetryOptions(opts ...any) *UserTweetUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *UserTweetUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -214,6 +222,7 @@ func (_u *UserTweetUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{usertweet.Label}
@@ -229,9 +238,10 @@ func (_u *UserTweetUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // UserTweetUpdateOne is the builder for updating a single UserTweet entity.
 type UserTweetUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *UserTweetMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *UserTweetMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -354,6 +364,13 @@ func (_u *UserTweetUpdateOne) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *UserTweetUpdateOne) WithRetryOptions(opts ...any) *UserTweetUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *UserTweetUpdateOne) sqlSave(ctx context.Context) (_node *UserTweet, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -444,6 +461,7 @@ func (_u *UserTweetUpdateOne) sqlSave(ctx context.Context) (_node *UserTweet, er
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &UserTweet{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

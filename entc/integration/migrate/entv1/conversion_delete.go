@@ -19,8 +19,9 @@ import (
 // ConversionDelete is the builder for deleting a Conversion entity.
 type ConversionDelete struct {
 	config
-	hooks    []Hook
-	mutation *ConversionMutation
+	hooks       []Hook
+	mutation    *ConversionMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the ConversionDelete builder.
@@ -45,6 +46,7 @@ func (_d *ConversionDelete) ExecX(ctx context.Context) int {
 
 func (_d *ConversionDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(conversion.Table, sqlgraph.NewFieldSpec(conversion.FieldID, field.TypeInt))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *ConversionDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *ConversionDelete) WithRetryOptions(opts ...any) *ConversionDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // ConversionDeleteOne is the builder for deleting a single Conversion entity.

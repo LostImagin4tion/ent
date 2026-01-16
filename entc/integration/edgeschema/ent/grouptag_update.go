@@ -23,8 +23,9 @@ import (
 // GroupTagUpdate is the builder for updating GroupTag entities.
 type GroupTagUpdate struct {
 	config
-	hooks    []Hook
-	mutation *GroupTagMutation
+	hooks       []Hook
+	mutation    *GroupTagMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the GroupTagUpdate builder.
@@ -126,6 +127,13 @@ func (_u *GroupTagUpdate) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *GroupTagUpdate) WithRetryOptions(opts ...any) *GroupTagUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *GroupTagUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -196,6 +204,7 @@ func (_u *GroupTagUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{grouptag.Label}
@@ -211,9 +220,10 @@ func (_u *GroupTagUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // GroupTagUpdateOne is the builder for updating a single GroupTag entity.
 type GroupTagUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *GroupTagMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *GroupTagMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetTagID sets the "tag_id" field.
@@ -322,6 +332,13 @@ func (_u *GroupTagUpdateOne) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *GroupTagUpdateOne) WithRetryOptions(opts ...any) *GroupTagUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *GroupTagUpdateOne) sqlSave(ctx context.Context) (_node *GroupTag, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -409,6 +426,7 @@ func (_u *GroupTagUpdateOne) sqlSave(ctx context.Context) (_node *GroupTag, err 
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &GroupTag{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

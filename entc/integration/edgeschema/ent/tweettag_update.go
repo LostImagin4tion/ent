@@ -24,8 +24,9 @@ import (
 // TweetTagUpdate is the builder for updating TweetTag entities.
 type TweetTagUpdate struct {
 	config
-	hooks    []Hook
-	mutation *TweetTagMutation
+	hooks       []Hook
+	mutation    *TweetTagMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the TweetTagUpdate builder.
@@ -141,6 +142,13 @@ func (_u *TweetTagUpdate) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *TweetTagUpdate) WithRetryOptions(opts ...any) *TweetTagUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *TweetTagUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -214,6 +222,7 @@ func (_u *TweetTagUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{tweettag.Label}
@@ -229,9 +238,10 @@ func (_u *TweetTagUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // TweetTagUpdateOne is the builder for updating a single TweetTag entity.
 type TweetTagUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *TweetTagMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *TweetTagMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetAddedAt sets the "added_at" field.
@@ -354,6 +364,13 @@ func (_u *TweetTagUpdateOne) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *TweetTagUpdateOne) WithRetryOptions(opts ...any) *TweetTagUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *TweetTagUpdateOne) sqlSave(ctx context.Context) (_node *TweetTag, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -444,6 +461,7 @@ func (_u *TweetTagUpdateOne) sqlSave(ctx context.Context) (_node *TweetTag, err 
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &TweetTag{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

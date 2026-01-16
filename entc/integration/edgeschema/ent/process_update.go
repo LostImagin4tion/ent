@@ -23,8 +23,9 @@ import (
 // ProcessUpdate is the builder for updating Process entities.
 type ProcessUpdate struct {
 	config
-	hooks    []Hook
-	mutation *ProcessMutation
+	hooks       []Hook
+	mutation    *ProcessMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the ProcessUpdate builder.
@@ -135,6 +136,13 @@ func (_u *ProcessUpdate) ExecX(ctx context.Context) {
 	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *ProcessUpdate) WithRetryOptions(opts ...any) *ProcessUpdate {
+	_u.retryConfig.Options = opts
+	return _u
 }
 
 func (_u *ProcessUpdate) sqlSave(ctx context.Context) (_node int, err error) {
@@ -248,6 +256,7 @@ func (_u *ProcessUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{process.Label}
@@ -263,9 +272,10 @@ func (_u *ProcessUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // ProcessUpdateOne is the builder for updating a single Process entity.
 type ProcessUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *ProcessMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *ProcessMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // AddFileIDs adds the "files" edge to the File entity by IDs.
@@ -383,6 +393,13 @@ func (_u *ProcessUpdateOne) ExecX(ctx context.Context) {
 	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *ProcessUpdateOne) WithRetryOptions(opts ...any) *ProcessUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
 }
 
 func (_u *ProcessUpdateOne) sqlSave(ctx context.Context) (_node *Process, err error) {
@@ -513,6 +530,7 @@ func (_u *ProcessUpdateOne) sqlSave(ctx context.Context) (_node *Process, err er
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Process{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

@@ -21,9 +21,10 @@ import (
 // PCUpdate is the builder for updating PC entities.
 type PCUpdate struct {
 	config
-	hooks     []Hook
-	mutation  *PCMutation
-	modifiers []func(*sql.UpdateBuilder)
+	hooks       []Hook
+	mutation    *PCMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the PCUpdate builder.
@@ -70,6 +71,13 @@ func (_u *PCUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *PCUpdate {
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *PCUpdate) WithRetryOptions(opts ...any) *PCUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *PCUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(pc.Table, pc.Columns, sqlgraph.NewFieldSpec(pc.FieldID, field.TypeInt))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -80,6 +88,7 @@ func (_u *PCUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 	}
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{pc.Label}
@@ -95,10 +104,11 @@ func (_u *PCUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // PCUpdateOne is the builder for updating a single PC entity.
 type PCUpdateOne struct {
 	config
-	fields    []string
-	hooks     []Hook
-	mutation  *PCMutation
-	modifiers []func(*sql.UpdateBuilder)
+	fields      []string
+	hooks       []Hook
+	mutation    *PCMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Mutation returns the PCMutation object of the builder.
@@ -152,6 +162,13 @@ func (_u *PCUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *PCUpdate
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *PCUpdateOne) WithRetryOptions(opts ...any) *PCUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *PCUpdateOne) sqlSave(ctx context.Context) (_node *PC, err error) {
 	_spec := sqlgraph.NewUpdateSpec(pc.Table, pc.Columns, sqlgraph.NewFieldSpec(pc.FieldID, field.TypeInt))
 	id, ok := _u.mutation.ID()
@@ -179,6 +196,7 @@ func (_u *PCUpdateOne) sqlSave(ctx context.Context) (_node *PC, err error) {
 		}
 	}
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	_node = &PC{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

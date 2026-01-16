@@ -31,6 +31,7 @@ type NoteQuery struct {
 	withParent   *NoteQuery
 	withChildren *NoteQuery
 	withFKs      bool
+	retryConfig  sqlgraph.RetryConfig
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -432,6 +433,7 @@ func (_q *NoteQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Note, e
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	_spec.RetryConfig = _q.retryConfig
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -523,6 +525,7 @@ func (_q *NoteQuery) loadChildren(ctx context.Context, query *NoteQuery, nodes [
 
 func (_q *NoteQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
+	_spec.RetryConfig = _q.retryConfig
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
 		_spec.Unique = _q.ctx.Unique != nil && *_q.ctx.Unique
@@ -600,6 +603,13 @@ func (_q *NoteQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// WithRetryOptions sets the retry options for the query operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_q *NoteQuery) WithRetryOptions(opts ...any) *NoteQuery {
+	_q.retryConfig.Options = opts
+	return _q
 }
 
 // NoteGroupBy is the group-by builder for Note entities.

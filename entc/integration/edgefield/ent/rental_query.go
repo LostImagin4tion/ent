@@ -25,12 +25,13 @@ import (
 // RentalQuery is the builder for querying Rental entities.
 type RentalQuery struct {
 	config
-	ctx        *QueryContext
-	order      []rental.OrderOption
-	inters     []Interceptor
-	predicates []predicate.Rental
-	withUser   *UserQuery
-	withCar    *CarQuery
+	ctx         *QueryContext
+	order       []rental.OrderOption
+	inters      []Interceptor
+	predicates  []predicate.Rental
+	withUser    *UserQuery
+	withCar     *CarQuery
+	retryConfig sqlgraph.RetryConfig
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -425,6 +426,7 @@ func (_q *RentalQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Renta
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	_spec.RetryConfig = _q.retryConfig
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -510,6 +512,7 @@ func (_q *RentalQuery) loadCar(ctx context.Context, query *CarQuery, nodes []*Re
 
 func (_q *RentalQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
+	_spec.RetryConfig = _q.retryConfig
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
 		_spec.Unique = _q.ctx.Unique != nil && *_q.ctx.Unique
@@ -593,6 +596,13 @@ func (_q *RentalQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// WithRetryOptions sets the retry options for the query operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_q *RentalQuery) WithRetryOptions(opts ...any) *RentalQuery {
+	_q.retryConfig.Options = opts
+	return _q
 }
 
 // RentalGroupBy is the group-by builder for Rental entities.

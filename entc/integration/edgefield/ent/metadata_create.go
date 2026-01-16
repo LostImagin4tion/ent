@@ -20,8 +20,9 @@ import (
 // MetadataCreate is the builder for creating a Metadata entity.
 type MetadataCreate struct {
 	config
-	mutation *MetadataMutation
-	hooks    []Hook
+	mutation    *MetadataMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetAge sets the "age" field.
@@ -171,6 +172,7 @@ func (_c *MetadataCreate) createSpec() (*Metadata, *sqlgraph.CreateSpec) {
 		_node = &Metadata{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(metadata.Table, sqlgraph.NewFieldSpec(metadata.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = id
@@ -232,11 +234,19 @@ func (_c *MetadataCreate) createSpec() (*Metadata, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *MetadataCreate) WithRetryOptions(opts ...any) *MetadataCreate {
+	_c.retryConfig.Options = opts
+	return _c
+}
+
 // MetadataCreateBulk is the builder for creating many Metadata entities in bulk.
 type MetadataCreateBulk struct {
 	config
-	err      error
-	builders []*MetadataCreate
+	err         error
+	builders    []*MetadataCreate
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Save creates the Metadata entities in the database.
@@ -266,6 +276,7 @@ func (_c *MetadataCreateBulk) Save(ctx context.Context) ([]*Metadata, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -318,4 +329,11 @@ func (_c *MetadataCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *MetadataCreateBulk) WithRetryOptions(opts ...any) *MetadataCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }

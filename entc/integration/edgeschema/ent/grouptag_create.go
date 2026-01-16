@@ -22,9 +22,10 @@ import (
 // GroupTagCreate is the builder for creating a GroupTag entity.
 type GroupTagCreate struct {
 	config
-	mutation *GroupTagMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *GroupTagMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // SetTagID sets the "tag_id" field.
@@ -121,6 +122,7 @@ func (_c *GroupTagCreate) createSpec() (*GroupTag, *sqlgraph.CreateSpec) {
 		_node = &GroupTag{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(grouptag.Table, sqlgraph.NewFieldSpec(grouptag.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	if nodes := _c.mutation.TagIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -157,6 +159,13 @@ func (_c *GroupTagCreate) createSpec() (*GroupTag, *sqlgraph.CreateSpec) {
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *GroupTagCreate) WithRetryOptions(opts ...any) *GroupTagCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -336,9 +345,10 @@ func (u *GroupTagUpsertOne) IDX(ctx context.Context) int {
 // GroupTagCreateBulk is the builder for creating many GroupTag entities in bulk.
 type GroupTagCreateBulk struct {
 	config
-	err      error
-	builders []*GroupTagCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*GroupTagCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the GroupTag entities in the database.
@@ -367,6 +377,7 @@ func (_c *GroupTagCreateBulk) Save(ctx context.Context) ([]*GroupTag, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -420,6 +431,13 @@ func (_c *GroupTagCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *GroupTagCreateBulk) WithRetryOptions(opts ...any) *GroupTagCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

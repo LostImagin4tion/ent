@@ -19,8 +19,9 @@ import (
 // TaskDelete is the builder for deleting a Task entity.
 type TaskDelete struct {
 	config
-	hooks    []Hook
-	mutation *TaskMutation
+	hooks       []Hook
+	mutation    *TaskMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the TaskDelete builder.
@@ -45,6 +46,7 @@ func (_d *TaskDelete) ExecX(ctx context.Context) int {
 
 func (_d *TaskDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(task.Table, sqlgraph.NewFieldSpec(task.FieldID, field.TypeInt))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *TaskDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *TaskDelete) WithRetryOptions(opts ...any) *TaskDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // TaskDeleteOne is the builder for deleting a single Task entity.

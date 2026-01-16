@@ -23,12 +23,13 @@ import (
 // BlobLinkQuery is the builder for querying BlobLink entities.
 type BlobLinkQuery struct {
 	config
-	ctx        *QueryContext
-	order      []bloblink.OrderOption
-	inters     []Interceptor
-	predicates []predicate.BlobLink
-	withBlob   *BlobQuery
-	withLink   *BlobQuery
+	ctx         *QueryContext
+	order       []bloblink.OrderOption
+	inters      []Interceptor
+	predicates  []predicate.BlobLink
+	withBlob    *BlobQuery
+	withLink    *BlobQuery
+	retryConfig sqlgraph.RetryConfig
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -351,6 +352,7 @@ func (_q *BlobLinkQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Blo
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	_spec.RetryConfig = _q.retryConfig
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -436,6 +438,7 @@ func (_q *BlobLinkQuery) loadLink(ctx context.Context, query *BlobQuery, nodes [
 
 func (_q *BlobLinkQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
+	_spec.RetryConfig = _q.retryConfig
 	_spec.Unique = false
 	_spec.Node.Columns = nil
 	return sqlgraph.CountNodes(ctx, _q.driver, _spec)
@@ -514,6 +517,13 @@ func (_q *BlobLinkQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// WithRetryOptions sets the retry options for the query operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_q *BlobLinkQuery) WithRetryOptions(opts ...any) *BlobLinkQuery {
+	_q.retryConfig.Options = opts
+	return _q
 }
 
 // BlobLinkGroupBy is the group-by builder for BlobLink entities.

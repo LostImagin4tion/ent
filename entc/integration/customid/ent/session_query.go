@@ -24,12 +24,13 @@ import (
 // SessionQuery is the builder for querying Session entities.
 type SessionQuery struct {
 	config
-	ctx        *QueryContext
-	order      []session.OrderOption
-	inters     []Interceptor
-	predicates []predicate.Session
-	withDevice *DeviceQuery
-	withFKs    bool
+	ctx         *QueryContext
+	order       []session.OrderOption
+	inters      []Interceptor
+	predicates  []predicate.Session
+	withDevice  *DeviceQuery
+	withFKs     bool
+	retryConfig sqlgraph.RetryConfig
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -374,6 +375,7 @@ func (_q *SessionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Sess
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	_spec.RetryConfig = _q.retryConfig
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -427,6 +429,7 @@ func (_q *SessionQuery) loadDevice(ctx context.Context, query *DeviceQuery, node
 
 func (_q *SessionQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
+	_spec.RetryConfig = _q.retryConfig
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
 		_spec.Unique = _q.ctx.Unique != nil && *_q.ctx.Unique
@@ -504,6 +507,13 @@ func (_q *SessionQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// WithRetryOptions sets the retry options for the query operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_q *SessionQuery) WithRetryOptions(opts ...any) *SessionQuery {
+	_q.retryConfig.Options = opts
+	return _q
 }
 
 // SessionGroupBy is the group-by builder for Session entities.

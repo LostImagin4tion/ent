@@ -21,8 +21,9 @@ import (
 // FriendshipCreate is the builder for creating a Friendship entity.
 type FriendshipCreate struct {
 	config
-	mutation *FriendshipMutation
-	hooks    []Hook
+	mutation    *FriendshipMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetWeight sets the "weight" field.
@@ -167,6 +168,7 @@ func (_c *FriendshipCreate) createSpec() (*Friendship, *sqlgraph.CreateSpec) {
 		_spec = sqlgraph.NewCreateSpec(friendship.Table, sqlgraph.NewFieldSpec(friendship.FieldID, field.TypeInt))
 	)
 	_spec.Schema = _c.schemaConfig.Friendship
+	_spec.RetryConfig = _c.retryConfig
 	if value, ok := _c.mutation.Weight(); ok {
 		_spec.SetField(friendship.FieldWeight, field.TypeInt, value)
 		_node.Weight = value
@@ -214,11 +216,19 @@ func (_c *FriendshipCreate) createSpec() (*Friendship, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *FriendshipCreate) WithRetryOptions(opts ...any) *FriendshipCreate {
+	_c.retryConfig.Options = opts
+	return _c
+}
+
 // FriendshipCreateBulk is the builder for creating many Friendship entities in bulk.
 type FriendshipCreateBulk struct {
 	config
-	err      error
-	builders []*FriendshipCreate
+	err         error
+	builders    []*FriendshipCreate
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Save creates the Friendship entities in the database.
@@ -248,6 +258,7 @@ func (_c *FriendshipCreateBulk) Save(ctx context.Context) ([]*Friendship, error)
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -300,4 +311,11 @@ func (_c *FriendshipCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *FriendshipCreateBulk) WithRetryOptions(opts ...any) *FriendshipCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }

@@ -19,8 +19,9 @@ import (
 // ZooDelete is the builder for deleting a Zoo entity.
 type ZooDelete struct {
 	config
-	hooks    []Hook
-	mutation *ZooMutation
+	hooks       []Hook
+	mutation    *ZooMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the ZooDelete builder.
@@ -45,6 +46,7 @@ func (_d *ZooDelete) ExecX(ctx context.Context) int {
 
 func (_d *ZooDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(zoo.Table, sqlgraph.NewFieldSpec(zoo.FieldID, field.TypeInt))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *ZooDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *ZooDelete) WithRetryOptions(opts ...any) *ZooDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // ZooDeleteOne is the builder for deleting a single Zoo entity.

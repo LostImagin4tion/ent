@@ -21,8 +21,9 @@ import (
 // ConversionUpdate is the builder for updating Conversion entities.
 type ConversionUpdate struct {
 	config
-	hooks    []Hook
-	mutation *ConversionMutation
+	hooks       []Hook
+	mutation    *ConversionMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the ConversionUpdate builder.
@@ -299,6 +300,13 @@ func (_u *ConversionUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *ConversionUpdate) WithRetryOptions(opts ...any) *ConversionUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *ConversionUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(conversion.Table, conversion.Columns, sqlgraph.NewFieldSpec(conversion.FieldID, field.TypeInt))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -386,6 +394,7 @@ func (_u *ConversionUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	if _u.mutation.Uint64ToStringCleared() {
 		_spec.ClearField(conversion.FieldUint64ToString, field.TypeUint64)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{conversion.Label}
@@ -401,9 +410,10 @@ func (_u *ConversionUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 // ConversionUpdateOne is the builder for updating a single Conversion entity.
 type ConversionUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *ConversionMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *ConversionMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetName sets the "name" field.
@@ -687,6 +697,13 @@ func (_u *ConversionUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *ConversionUpdateOne) WithRetryOptions(opts ...any) *ConversionUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *ConversionUpdateOne) sqlSave(ctx context.Context) (_node *Conversion, err error) {
 	_spec := sqlgraph.NewUpdateSpec(conversion.Table, conversion.Columns, sqlgraph.NewFieldSpec(conversion.FieldID, field.TypeInt))
 	id, ok := _u.mutation.ID()
@@ -791,6 +808,7 @@ func (_u *ConversionUpdateOne) sqlSave(ctx context.Context) (_node *Conversion, 
 	if _u.mutation.Uint64ToStringCleared() {
 		_spec.ClearField(conversion.FieldUint64ToString, field.TypeUint64)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Conversion{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

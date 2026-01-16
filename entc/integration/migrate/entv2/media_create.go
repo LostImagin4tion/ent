@@ -18,8 +18,9 @@ import (
 // MediaCreate is the builder for creating a Media entity.
 type MediaCreate struct {
 	config
-	mutation *MediaMutation
-	hooks    []Hook
+	mutation    *MediaMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetSource sets the "source" field.
@@ -124,6 +125,7 @@ func (_c *MediaCreate) createSpec() (*Media, *sqlgraph.CreateSpec) {
 		_node = &Media{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(media.Table, sqlgraph.NewFieldSpec(media.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	if value, ok := _c.mutation.Source(); ok {
 		_spec.SetField(media.FieldSource, field.TypeString, value)
 		_node.Source = value
@@ -139,11 +141,19 @@ func (_c *MediaCreate) createSpec() (*Media, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *MediaCreate) WithRetryOptions(opts ...any) *MediaCreate {
+	_c.retryConfig.Options = opts
+	return _c
+}
+
 // MediaCreateBulk is the builder for creating many Media entities in bulk.
 type MediaCreateBulk struct {
 	config
-	err      error
-	builders []*MediaCreate
+	err         error
+	builders    []*MediaCreate
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Save creates the Media entities in the database.
@@ -172,6 +182,7 @@ func (_c *MediaCreateBulk) Save(ctx context.Context) ([]*Media, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -224,4 +235,11 @@ func (_c *MediaCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *MediaCreateBulk) WithRetryOptions(opts ...any) *MediaCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }

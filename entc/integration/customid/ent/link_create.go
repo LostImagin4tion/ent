@@ -23,9 +23,10 @@ import (
 // LinkCreate is the builder for creating a Link entity.
 type LinkCreate struct {
 	config
-	mutation *LinkMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *LinkMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // SetLinkInformation sets the "link_information" field.
@@ -129,6 +130,7 @@ func (_c *LinkCreate) createSpec() (*Link, *sqlgraph.CreateSpec) {
 		_node = &Link{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(link.Table, sqlgraph.NewFieldSpec(link.FieldID, field.TypeUUID))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
@@ -139,6 +141,13 @@ func (_c *LinkCreate) createSpec() (*Link, *sqlgraph.CreateSpec) {
 		_node.LinkInformation = value
 	}
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *LinkCreate) WithRetryOptions(opts ...any) *LinkCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -305,9 +314,10 @@ func (u *LinkUpsertOne) IDX(ctx context.Context) uuidc.UUIDC {
 // LinkCreateBulk is the builder for creating many Link entities in bulk.
 type LinkCreateBulk struct {
 	config
-	err      error
-	builders []*LinkCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*LinkCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the Link entities in the database.
@@ -337,6 +347,7 @@ func (_c *LinkCreateBulk) Save(ctx context.Context) ([]*Link, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -386,6 +397,13 @@ func (_c *LinkCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *LinkCreateBulk) WithRetryOptions(opts ...any) *LinkCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

@@ -21,8 +21,9 @@ import (
 // MediaUpdate is the builder for updating Media entities.
 type MediaUpdate struct {
 	config
-	hooks    []Hook
-	mutation *MediaMutation
+	hooks       []Hook
+	mutation    *MediaMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the MediaUpdate builder.
@@ -123,6 +124,13 @@ func (_u *MediaUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *MediaUpdate) WithRetryOptions(opts ...any) *MediaUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *MediaUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(media.Table, media.Columns, sqlgraph.NewFieldSpec(media.FieldID, field.TypeInt))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -150,6 +158,7 @@ func (_u *MediaUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.TextCleared() {
 		_spec.ClearField(media.FieldText, field.TypeString)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{media.Label}
@@ -165,9 +174,10 @@ func (_u *MediaUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // MediaUpdateOne is the builder for updating a single Media entity.
 type MediaUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *MediaMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *MediaMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetSource sets the "source" field.
@@ -275,6 +285,13 @@ func (_u *MediaUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *MediaUpdateOne) WithRetryOptions(opts ...any) *MediaUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *MediaUpdateOne) sqlSave(ctx context.Context) (_node *Media, err error) {
 	_spec := sqlgraph.NewUpdateSpec(media.Table, media.Columns, sqlgraph.NewFieldSpec(media.FieldID, field.TypeInt))
 	id, ok := _u.mutation.ID()
@@ -319,6 +336,7 @@ func (_u *MediaUpdateOne) sqlSave(ctx context.Context) (_node *Media, err error)
 	if _u.mutation.TextCleared() {
 		_spec.ClearField(media.FieldText, field.TypeString)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Media{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

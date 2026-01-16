@@ -24,8 +24,9 @@ import (
 // TaskUpdate is the builder for updating Task entities.
 type TaskUpdate struct {
 	config
-	hooks    []Hook
-	mutation *TaskMutation
+	hooks       []Hook
+	mutation    *TaskMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the TaskUpdate builder.
@@ -210,6 +211,13 @@ func (_u *TaskUpdate) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *TaskUpdate) WithRetryOptions(opts ...any) *TaskUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *TaskUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -314,6 +322,7 @@ func (_u *TaskUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{task.Label}
@@ -329,9 +338,10 @@ func (_u *TaskUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // TaskUpdateOne is the builder for updating a single Task entity.
 type TaskUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *TaskMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *TaskMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetTitle sets the "title" field.
@@ -523,6 +533,13 @@ func (_u *TaskUpdateOne) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *TaskUpdateOne) WithRetryOptions(opts ...any) *TaskUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *TaskUpdateOne) sqlSave(ctx context.Context) (_node *Task, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -644,6 +661,7 @@ func (_u *TaskUpdateOne) sqlSave(ctx context.Context) (_node *Task, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Task{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

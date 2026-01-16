@@ -20,8 +20,9 @@ import (
 // ParentCreate is the builder for creating a Parent entity.
 type ParentCreate struct {
 	config
-	mutation *ParentMutation
-	hooks    []Hook
+	mutation    *ParentMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetByAdoption sets the "by_adoption" field.
@@ -151,6 +152,7 @@ func (_c *ParentCreate) createSpec() (*Parent, *sqlgraph.CreateSpec) {
 		_spec = sqlgraph.NewCreateSpec(parent.Table, sqlgraph.NewFieldSpec(parent.FieldID, field.TypeInt))
 	)
 	_spec.Schema = _c.schemaConfig.Parent
+	_spec.RetryConfig = _c.retryConfig
 	if value, ok := _c.mutation.ByAdoption(); ok {
 		_spec.SetField(parent.FieldByAdoption, field.TypeBool, value)
 		_node.ByAdoption = value
@@ -194,11 +196,19 @@ func (_c *ParentCreate) createSpec() (*Parent, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *ParentCreate) WithRetryOptions(opts ...any) *ParentCreate {
+	_c.retryConfig.Options = opts
+	return _c
+}
+
 // ParentCreateBulk is the builder for creating many Parent entities in bulk.
 type ParentCreateBulk struct {
 	config
-	err      error
-	builders []*ParentCreate
+	err         error
+	builders    []*ParentCreate
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Save creates the Parent entities in the database.
@@ -228,6 +238,7 @@ func (_c *ParentCreateBulk) Save(ctx context.Context) ([]*Parent, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -280,4 +291,11 @@ func (_c *ParentCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *ParentCreateBulk) WithRetryOptions(opts ...any) *ParentCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }

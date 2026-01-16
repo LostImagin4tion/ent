@@ -21,9 +21,10 @@ import (
 // IntSIDCreate is the builder for creating a IntSID entity.
 type IntSIDCreate struct {
 	config
-	mutation *IntSIDMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *IntSIDMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // SetID sets the "id" field.
@@ -131,6 +132,7 @@ func (_c *IntSIDCreate) createSpec() (*IntSID, *sqlgraph.CreateSpec) {
 		_node = &IntSID{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(intsid.Table, sqlgraph.NewFieldSpec(intsid.FieldID, field.TypeInt64))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
@@ -170,6 +172,13 @@ func (_c *IntSIDCreate) createSpec() (*IntSID, *sqlgraph.CreateSpec) {
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *IntSIDCreate) WithRetryOptions(opts ...any) *IntSIDCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -299,9 +308,10 @@ func (u *IntSIDUpsertOne) IDX(ctx context.Context) sid.ID {
 // IntSIDCreateBulk is the builder for creating many IntSID entities in bulk.
 type IntSIDCreateBulk struct {
 	config
-	err      error
-	builders []*IntSIDCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*IntSIDCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the IntSID entities in the database.
@@ -330,6 +340,7 @@ func (_c *IntSIDCreateBulk) Save(ctx context.Context) ([]*IntSID, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -384,6 +395,13 @@ func (_c *IntSIDCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *IntSIDCreateBulk) WithRetryOptions(opts ...any) *IntSIDCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

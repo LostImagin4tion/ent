@@ -22,8 +22,9 @@ import (
 // MetadataUpdate is the builder for updating Metadata entities.
 type MetadataUpdate struct {
 	config
-	hooks    []Hook
-	mutation *MetadataMutation
+	hooks       []Hook
+	mutation    *MetadataMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the MetadataUpdate builder.
@@ -177,6 +178,13 @@ func (_u *MetadataUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *MetadataUpdate) WithRetryOptions(opts ...any) *MetadataUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *MetadataUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(metadata.Table, metadata.Columns, sqlgraph.NewFieldSpec(metadata.FieldID, field.TypeInt))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -295,6 +303,7 @@ func (_u *MetadataUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{metadata.Label}
@@ -310,9 +319,10 @@ func (_u *MetadataUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // MetadataUpdateOne is the builder for updating a single Metadata entity.
 type MetadataUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *MetadataMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *MetadataMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetAge sets the "age" field.
@@ -473,6 +483,13 @@ func (_u *MetadataUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *MetadataUpdateOne) WithRetryOptions(opts ...any) *MetadataUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *MetadataUpdateOne) sqlSave(ctx context.Context) (_node *Metadata, err error) {
 	_spec := sqlgraph.NewUpdateSpec(metadata.Table, metadata.Columns, sqlgraph.NewFieldSpec(metadata.FieldID, field.TypeInt))
 	id, ok := _u.mutation.ID()
@@ -608,6 +625,7 @@ func (_u *MetadataUpdateOne) sqlSave(ctx context.Context) (_node *Metadata, err 
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Metadata{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

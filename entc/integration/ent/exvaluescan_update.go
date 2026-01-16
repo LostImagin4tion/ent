@@ -23,9 +23,10 @@ import (
 // ExValueScanUpdate is the builder for updating ExValueScan entities.
 type ExValueScanUpdate struct {
 	config
-	hooks     []Hook
-	mutation  *ExValueScanMutation
-	modifiers []func(*sql.UpdateBuilder)
+	hooks       []Hook
+	mutation    *ExValueScanMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the ExValueScanUpdate builder.
@@ -162,6 +163,13 @@ func (_u *ExValueScanUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *Ex
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *ExValueScanUpdate) WithRetryOptions(opts ...any) *ExValueScanUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *ExValueScanUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(exvaluescan.Table, exvaluescan.Columns, sqlgraph.NewFieldSpec(exvaluescan.FieldID, field.TypeInt))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -237,6 +245,7 @@ func (_u *ExValueScanUpdate) sqlSave(ctx context.Context) (_node int, err error)
 		_spec.ClearField(exvaluescan.FieldCustomOptional, field.TypeString)
 	}
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{exvaluescan.Label}
@@ -252,10 +261,11 @@ func (_u *ExValueScanUpdate) sqlSave(ctx context.Context) (_node int, err error)
 // ExValueScanUpdateOne is the builder for updating a single ExValueScan entity.
 type ExValueScanUpdateOne struct {
 	config
-	fields    []string
-	hooks     []Hook
-	mutation  *ExValueScanMutation
-	modifiers []func(*sql.UpdateBuilder)
+	fields      []string
+	hooks       []Hook
+	mutation    *ExValueScanMutation
+	modifiers   []func(*sql.UpdateBuilder)
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetBinary sets the "binary" field.
@@ -399,6 +409,13 @@ func (_u *ExValueScanUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) 
 	return _u
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *ExValueScanUpdateOne) WithRetryOptions(opts ...any) *ExValueScanUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *ExValueScanUpdateOne) sqlSave(ctx context.Context) (_node *ExValueScan, err error) {
 	_spec := sqlgraph.NewUpdateSpec(exvaluescan.Table, exvaluescan.Columns, sqlgraph.NewFieldSpec(exvaluescan.FieldID, field.TypeInt))
 	id, ok := _u.mutation.ID()
@@ -491,6 +508,7 @@ func (_u *ExValueScanUpdateOne) sqlSave(ctx context.Context) (_node *ExValueScan
 		_spec.ClearField(exvaluescan.FieldCustomOptional, field.TypeString)
 	}
 	_spec.AddModifiers(_u.modifiers...)
+	_spec.RetryConfig = _u.retryConfig
 	_node = &ExValueScan{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

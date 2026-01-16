@@ -22,9 +22,10 @@ import (
 // ExValueScanCreate is the builder for creating a ExValueScan entity.
 type ExValueScanCreate struct {
 	config
-	mutation *ExValueScanMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *ExValueScanMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // SetBinary sets the "binary" field.
@@ -161,6 +162,7 @@ func (_c *ExValueScanCreate) createSpec() (*ExValueScan, *sqlgraph.CreateSpec, e
 		_node = &ExValueScan{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(exvaluescan.Table, sqlgraph.NewFieldSpec(exvaluescan.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	if value, ok := _c.mutation.Binary(); ok {
 		vv, err := exvaluescan.ValueScanner.Binary.Value(value)
@@ -227,6 +229,13 @@ func (_c *ExValueScanCreate) createSpec() (*ExValueScan, *sqlgraph.CreateSpec, e
 		_node.CustomOptional = value
 	}
 	return _node, _spec, nil
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *ExValueScanCreate) WithRetryOptions(opts ...any) *ExValueScanCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -601,9 +610,10 @@ func (u *ExValueScanUpsertOne) IDX(ctx context.Context) int {
 // ExValueScanCreateBulk is the builder for creating many ExValueScan entities in bulk.
 type ExValueScanCreateBulk struct {
 	config
-	err      error
-	builders []*ExValueScanCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*ExValueScanCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the ExValueScan entities in the database.
@@ -635,6 +645,7 @@ func (_c *ExValueScanCreateBulk) Save(ctx context.Context) ([]*ExValueScan, erro
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -688,6 +699,13 @@ func (_c *ExValueScanCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *ExValueScanCreateBulk) WithRetryOptions(opts ...any) *ExValueScanCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

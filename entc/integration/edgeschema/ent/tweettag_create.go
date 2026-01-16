@@ -25,9 +25,10 @@ import (
 // TweetTagCreate is the builder for creating a TweetTag entity.
 type TweetTagCreate struct {
 	config
-	mutation *TweetTagMutation
-	hooks    []Hook
-	conflict []sql.ConflictOption
+	mutation    *TweetTagMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // SetAddedAt sets the "added_at" field.
@@ -173,6 +174,7 @@ func (_c *TweetTagCreate) createSpec() (*TweetTag, *sqlgraph.CreateSpec) {
 		_node = &TweetTag{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(tweettag.Table, sqlgraph.NewFieldSpec(tweettag.FieldID, field.TypeUUID))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	_spec.OnConflict = _c.conflict
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
@@ -217,6 +219,13 @@ func (_c *TweetTagCreate) createSpec() (*TweetTag, *sqlgraph.CreateSpec) {
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
+}
+
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *TweetTagCreate) WithRetryOptions(opts ...any) *TweetTagCreate {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
@@ -435,9 +444,10 @@ func (u *TweetTagUpsertOne) IDX(ctx context.Context) uuid.UUID {
 // TweetTagCreateBulk is the builder for creating many TweetTag entities in bulk.
 type TweetTagCreateBulk struct {
 	config
-	err      error
-	builders []*TweetTagCreate
-	conflict []sql.ConflictOption
+	err         error
+	builders    []*TweetTagCreate
+	retryConfig sqlgraph.RetryConfig
+	conflict    []sql.ConflictOption
 }
 
 // Save creates the TweetTag entities in the database.
@@ -467,6 +477,7 @@ func (_c *TweetTagCreateBulk) Save(ctx context.Context) ([]*TweetTag, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
@@ -516,6 +527,13 @@ func (_c *TweetTagCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *TweetTagCreateBulk) WithRetryOptions(opts ...any) *TweetTagCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }
 
 // OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause

@@ -23,8 +23,9 @@ import (
 // AccountUpdate is the builder for updating Account entities.
 type AccountUpdate struct {
 	config
-	hooks    []Hook
-	mutation *AccountMutation
+	hooks       []Hook
+	mutation    *AccountMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the AccountUpdate builder.
@@ -125,6 +126,13 @@ func (_u *AccountUpdate) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *AccountUpdate) WithRetryOptions(opts ...any) *AccountUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *AccountUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -185,6 +193,7 @@ func (_u *AccountUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{account.Label}
@@ -200,9 +209,10 @@ func (_u *AccountUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // AccountUpdateOne is the builder for updating a single Account entity.
 type AccountUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *AccountMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *AccountMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetEmail sets the "email" field.
@@ -310,6 +320,13 @@ func (_u *AccountUpdateOne) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *AccountUpdateOne) WithRetryOptions(opts ...any) *AccountUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *AccountUpdateOne) sqlSave(ctx context.Context) (_node *Account, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -387,6 +404,7 @@ func (_u *AccountUpdateOne) sqlSave(ctx context.Context) (_node *Account, err er
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Account{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

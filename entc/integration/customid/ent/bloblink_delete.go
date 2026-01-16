@@ -18,8 +18,9 @@ import (
 // BlobLinkDelete is the builder for deleting a BlobLink entity.
 type BlobLinkDelete struct {
 	config
-	hooks    []Hook
-	mutation *BlobLinkMutation
+	hooks       []Hook
+	mutation    *BlobLinkMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the BlobLinkDelete builder.
@@ -44,6 +45,7 @@ func (_d *BlobLinkDelete) ExecX(ctx context.Context) int {
 
 func (_d *BlobLinkDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(bloblink.Table, nil)
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -57,6 +59,13 @@ func (_d *BlobLinkDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *BlobLinkDelete) WithRetryOptions(opts ...any) *BlobLinkDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // BlobLinkDeleteOne is the builder for deleting a single BlobLink entity.

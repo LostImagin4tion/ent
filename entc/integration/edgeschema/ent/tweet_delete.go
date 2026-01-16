@@ -19,8 +19,9 @@ import (
 // TweetDelete is the builder for deleting a Tweet entity.
 type TweetDelete struct {
 	config
-	hooks    []Hook
-	mutation *TweetMutation
+	hooks       []Hook
+	mutation    *TweetMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the TweetDelete builder.
@@ -45,6 +46,7 @@ func (_d *TweetDelete) ExecX(ctx context.Context) int {
 
 func (_d *TweetDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(tweet.Table, sqlgraph.NewFieldSpec(tweet.FieldID, field.TypeInt))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *TweetDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *TweetDelete) WithRetryOptions(opts ...any) *TweetDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // TweetDeleteOne is the builder for deleting a single Tweet entity.

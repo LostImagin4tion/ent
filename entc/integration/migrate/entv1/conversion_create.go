@@ -18,8 +18,9 @@ import (
 // ConversionCreate is the builder for creating a Conversion entity.
 type ConversionCreate struct {
 	config
-	mutation *ConversionMutation
-	hooks    []Hook
+	mutation    *ConversionMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetName sets the "name" field.
@@ -208,6 +209,7 @@ func (_c *ConversionCreate) createSpec() (*Conversion, *sqlgraph.CreateSpec) {
 		_node = &Conversion{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(conversion.Table, sqlgraph.NewFieldSpec(conversion.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(conversion.FieldName, field.TypeString, value)
 		_node.Name = value
@@ -247,11 +249,19 @@ func (_c *ConversionCreate) createSpec() (*Conversion, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *ConversionCreate) WithRetryOptions(opts ...any) *ConversionCreate {
+	_c.retryConfig.Options = opts
+	return _c
+}
+
 // ConversionCreateBulk is the builder for creating many Conversion entities in bulk.
 type ConversionCreateBulk struct {
 	config
-	err      error
-	builders []*ConversionCreate
+	err         error
+	builders    []*ConversionCreate
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Save creates the Conversion entities in the database.
@@ -280,6 +290,7 @@ func (_c *ConversionCreateBulk) Save(ctx context.Context) ([]*Conversion, error)
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -332,4 +343,11 @@ func (_c *ConversionCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *ConversionCreateBulk) WithRetryOptions(opts ...any) *ConversionCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }

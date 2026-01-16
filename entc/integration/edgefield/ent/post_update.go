@@ -22,8 +22,9 @@ import (
 // PostUpdate is the builder for updating Post entities.
 type PostUpdate struct {
 	config
-	hooks    []Hook
-	mutation *PostMutation
+	hooks       []Hook
+	mutation    *PostMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the PostUpdate builder.
@@ -109,6 +110,13 @@ func (_u *PostUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *PostUpdate) WithRetryOptions(opts ...any) *PostUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *PostUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(post.Table, post.Columns, sqlgraph.NewFieldSpec(post.FieldID, field.TypeInt))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -150,6 +158,7 @@ func (_u *PostUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{post.Label}
@@ -165,9 +174,10 @@ func (_u *PostUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // PostUpdateOne is the builder for updating a single Post entity.
 type PostUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *PostMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *PostMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetText sets the "text" field.
@@ -260,6 +270,13 @@ func (_u *PostUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *PostUpdateOne) WithRetryOptions(opts ...any) *PostUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *PostUpdateOne) sqlSave(ctx context.Context) (_node *Post, err error) {
 	_spec := sqlgraph.NewUpdateSpec(post.Table, post.Columns, sqlgraph.NewFieldSpec(post.FieldID, field.TypeInt))
 	id, ok := _u.mutation.ID()
@@ -318,6 +335,7 @@ func (_u *PostUpdateOne) sqlSave(ctx context.Context) (_node *Post, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Post{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues
