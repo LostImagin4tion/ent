@@ -34,6 +34,7 @@ func Open(ctx context.Context, dsn string) (*YDBDriver, error) {
 		nativeDriver,
 		ydb.WithAutoDeclare(),
 		ydb.WithTablePathPrefix(nativeDriver.Name()),
+		ydb.WithQueryService(true),
 	)
 	if err != nil {
 		return nil, err
