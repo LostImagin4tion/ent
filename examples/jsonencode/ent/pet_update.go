@@ -22,8 +22,9 @@ import (
 // PetUpdate is the builder for updating Pet entities.
 type PetUpdate struct {
 	config
-	hooks    []Hook
-	mutation *PetMutation
+	hooks       []Hook
+	mutation    *PetMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the PetUpdate builder.
@@ -132,6 +133,13 @@ func (_u *PetUpdate) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *PetUpdate) WithRetryOptions(opts ...any) *PetUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *PetUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -182,6 +190,7 @@ func (_u *PetUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{pet.Label}
@@ -197,9 +206,10 @@ func (_u *PetUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // PetUpdateOne is the builder for updating a single Pet entity.
 type PetUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *PetMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *PetMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetAge sets the "age" field.
@@ -315,6 +325,13 @@ func (_u *PetUpdateOne) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *PetUpdateOne) WithRetryOptions(opts ...any) *PetUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *PetUpdateOne) sqlSave(ctx context.Context) (_node *Pet, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -382,6 +399,7 @@ func (_u *PetUpdateOne) sqlSave(ctx context.Context) (_node *Pet, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Pet{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

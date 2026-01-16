@@ -21,8 +21,9 @@ import (
 // PaymentCreate is the builder for creating a Payment entity.
 type PaymentCreate struct {
 	config
-	mutation *PaymentMutation
-	hooks    []Hook
+	mutation    *PaymentMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetCardID sets the "card_id" field.
@@ -162,6 +163,7 @@ func (_c *PaymentCreate) createSpec() (*Payment, *sqlgraph.CreateSpec) {
 		_node = &Payment{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(payment.Table, sqlgraph.NewFieldSpec(payment.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	if value, ok := _c.mutation.Amount(); ok {
 		_spec.SetField(payment.FieldAmount, field.TypeFloat64, value)
 		_node.Amount = value
@@ -202,11 +204,19 @@ func (_c *PaymentCreate) createSpec() (*Payment, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *PaymentCreate) WithRetryOptions(opts ...any) *PaymentCreate {
+	_c.retryConfig.Options = opts
+	return _c
+}
+
 // PaymentCreateBulk is the builder for creating many Payment entities in bulk.
 type PaymentCreateBulk struct {
 	config
-	err      error
-	builders []*PaymentCreate
+	err         error
+	builders    []*PaymentCreate
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Save creates the Payment entities in the database.
@@ -235,6 +245,7 @@ func (_c *PaymentCreateBulk) Save(ctx context.Context) ([]*Payment, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -287,4 +298,11 @@ func (_c *PaymentCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *PaymentCreateBulk) WithRetryOptions(opts ...any) *PaymentCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }

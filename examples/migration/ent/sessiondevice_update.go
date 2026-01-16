@@ -24,8 +24,9 @@ import (
 // SessionDeviceUpdate is the builder for updating SessionDevice entities.
 type SessionDeviceUpdate struct {
 	config
-	hooks    []Hook
-	mutation *SessionDeviceMutation
+	hooks       []Hook
+	mutation    *SessionDeviceMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the SessionDeviceUpdate builder.
@@ -198,6 +199,13 @@ func (_u *SessionDeviceUpdate) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *SessionDeviceUpdate) WithRetryOptions(opts ...any) *SessionDeviceUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *SessionDeviceUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -273,6 +281,7 @@ func (_u *SessionDeviceUpdate) sqlSave(ctx context.Context) (_node int, err erro
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{sessiondevice.Label}
@@ -288,9 +297,10 @@ func (_u *SessionDeviceUpdate) sqlSave(ctx context.Context) (_node int, err erro
 // SessionDeviceUpdateOne is the builder for updating a single SessionDevice entity.
 type SessionDeviceUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *SessionDeviceMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *SessionDeviceMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetIPAddress sets the "ip_address" field.
@@ -470,6 +480,13 @@ func (_u *SessionDeviceUpdateOne) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *SessionDeviceUpdateOne) WithRetryOptions(opts ...any) *SessionDeviceUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *SessionDeviceUpdateOne) sqlSave(ctx context.Context) (_node *SessionDevice, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -562,6 +579,7 @@ func (_u *SessionDeviceUpdateOne) sqlSave(ctx context.Context) (_node *SessionDe
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &SessionDevice{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

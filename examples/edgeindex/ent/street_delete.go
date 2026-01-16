@@ -19,8 +19,9 @@ import (
 // StreetDelete is the builder for deleting a Street entity.
 type StreetDelete struct {
 	config
-	hooks    []Hook
-	mutation *StreetMutation
+	hooks       []Hook
+	mutation    *StreetMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the StreetDelete builder.
@@ -45,6 +46,7 @@ func (_d *StreetDelete) ExecX(ctx context.Context) int {
 
 func (_d *StreetDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(street.Table, sqlgraph.NewFieldSpec(street.FieldID, field.TypeInt))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *StreetDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *StreetDelete) WithRetryOptions(opts ...any) *StreetDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // StreetDeleteOne is the builder for deleting a single Street entity.

@@ -17,8 +17,9 @@ import (
 // UserAuditLogUpdate is the builder for updating UserAuditLog entities.
 type UserAuditLogUpdate struct {
 	config
-	hooks    []Hook
-	mutation *UserAuditLogMutation
+	hooks       []Hook
+	mutation    *UserAuditLogMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the UserAuditLogUpdate builder.
@@ -127,6 +128,13 @@ func (_u *UserAuditLogUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *UserAuditLogUpdate) WithRetryOptions(opts ...any) *UserAuditLogUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *UserAuditLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(userauditlog.Table, userauditlog.Columns, sqlgraph.NewFieldSpec(userauditlog.FieldID, field.TypeInt))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -154,6 +162,7 @@ func (_u *UserAuditLogUpdate) sqlSave(ctx context.Context) (_node int, err error
 	if _u.mutation.NewValueCleared() {
 		_spec.ClearField(userauditlog.FieldNewValue, field.TypeString)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{userauditlog.Label}
@@ -169,9 +178,10 @@ func (_u *UserAuditLogUpdate) sqlSave(ctx context.Context) (_node int, err error
 // UserAuditLogUpdateOne is the builder for updating a single UserAuditLog entity.
 type UserAuditLogUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *UserAuditLogMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *UserAuditLogMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetOperationType sets the "operation_type" field.
@@ -287,6 +297,13 @@ func (_u *UserAuditLogUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *UserAuditLogUpdateOne) WithRetryOptions(opts ...any) *UserAuditLogUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *UserAuditLogUpdateOne) sqlSave(ctx context.Context) (_node *UserAuditLog, err error) {
 	_spec := sqlgraph.NewUpdateSpec(userauditlog.Table, userauditlog.Columns, sqlgraph.NewFieldSpec(userauditlog.FieldID, field.TypeInt))
 	id, ok := _u.mutation.ID()
@@ -331,6 +348,7 @@ func (_u *UserAuditLogUpdateOne) sqlSave(ctx context.Context) (_node *UserAuditL
 	if _u.mutation.NewValueCleared() {
 		_spec.ClearField(userauditlog.FieldNewValue, field.TypeString)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &UserAuditLog{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

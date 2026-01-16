@@ -22,8 +22,9 @@ import (
 // SessionCreate is the builder for creating a Session entity.
 type SessionCreate struct {
 	config
-	mutation *SessionMutation
-	hooks    []Hook
+	mutation    *SessionMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetActive sets the "active" field.
@@ -197,6 +198,7 @@ func (_c *SessionCreate) createSpec() (*Session, *sqlgraph.CreateSpec) {
 		_node = &Session{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(session.Table, sqlgraph.NewFieldSpec(session.FieldID, field.TypeUUID))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = &id
@@ -241,11 +243,19 @@ func (_c *SessionCreate) createSpec() (*Session, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *SessionCreate) WithRetryOptions(opts ...any) *SessionCreate {
+	_c.retryConfig.Options = opts
+	return _c
+}
+
 // SessionCreateBulk is the builder for creating many Session entities in bulk.
 type SessionCreateBulk struct {
 	config
-	err      error
-	builders []*SessionCreate
+	err         error
+	builders    []*SessionCreate
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Save creates the Session entities in the database.
@@ -275,6 +285,7 @@ func (_c *SessionCreateBulk) Save(ctx context.Context) ([]*Session, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -323,4 +334,11 @@ func (_c *SessionCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *SessionCreateBulk) WithRetryOptions(opts ...any) *SessionCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }

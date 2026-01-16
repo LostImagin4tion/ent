@@ -23,12 +23,13 @@ import (
 // StreetQuery is the builder for querying Street entities.
 type StreetQuery struct {
 	config
-	ctx        *QueryContext
-	order      []street.OrderOption
-	inters     []Interceptor
-	predicates []predicate.Street
-	withCity   *CityQuery
-	withFKs    bool
+	ctx         *QueryContext
+	order       []street.OrderOption
+	inters      []Interceptor
+	predicates  []predicate.Street
+	withCity    *CityQuery
+	withFKs     bool
+	retryConfig sqlgraph.RetryConfig
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -395,6 +396,7 @@ func (_q *StreetQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Stree
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	_spec.RetryConfig = _q.retryConfig
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -448,6 +450,7 @@ func (_q *StreetQuery) loadCity(ctx context.Context, query *CityQuery, nodes []*
 
 func (_q *StreetQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
+	_spec.RetryConfig = _q.retryConfig
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
 		_spec.Unique = _q.ctx.Unique != nil && *_q.ctx.Unique
@@ -525,6 +528,13 @@ func (_q *StreetQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// WithRetryOptions sets the retry options for the query operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_q *StreetQuery) WithRetryOptions(opts ...any) *StreetQuery {
+	_q.retryConfig.Options = opts
+	return _q
 }
 
 // StreetGroupBy is the group-by builder for Street entities.

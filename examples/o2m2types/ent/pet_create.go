@@ -20,8 +20,9 @@ import (
 // PetCreate is the builder for creating a Pet entity.
 type PetCreate struct {
 	config
-	mutation *PetMutation
-	hooks    []Hook
+	mutation    *PetMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetName sets the "name" field.
@@ -112,6 +113,7 @@ func (_c *PetCreate) createSpec() (*Pet, *sqlgraph.CreateSpec) {
 		_node = &Pet{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(pet.Table, sqlgraph.NewFieldSpec(pet.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(pet.FieldName, field.TypeString, value)
 		_node.Name = value
@@ -136,11 +138,19 @@ func (_c *PetCreate) createSpec() (*Pet, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *PetCreate) WithRetryOptions(opts ...any) *PetCreate {
+	_c.retryConfig.Options = opts
+	return _c
+}
+
 // PetCreateBulk is the builder for creating many Pet entities in bulk.
 type PetCreateBulk struct {
 	config
-	err      error
-	builders []*PetCreate
+	err         error
+	builders    []*PetCreate
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Save creates the Pet entities in the database.
@@ -169,6 +179,7 @@ func (_c *PetCreateBulk) Save(ctx context.Context) ([]*Pet, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -221,4 +232,11 @@ func (_c *PetCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *PetCreateBulk) WithRetryOptions(opts ...any) *PetCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }

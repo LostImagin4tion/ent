@@ -19,8 +19,9 @@ import (
 // GroupDelete is the builder for deleting a Group entity.
 type GroupDelete struct {
 	config
-	hooks    []Hook
-	mutation *GroupMutation
+	hooks       []Hook
+	mutation    *GroupMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the GroupDelete builder.
@@ -45,6 +46,7 @@ func (_d *GroupDelete) ExecX(ctx context.Context) int {
 
 func (_d *GroupDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(group.Table, sqlgraph.NewFieldSpec(group.FieldID, field.TypeInt))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *GroupDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *GroupDelete) WithRetryOptions(opts ...any) *GroupDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // GroupDeleteOne is the builder for deleting a single Group entity.

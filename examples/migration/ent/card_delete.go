@@ -19,8 +19,9 @@ import (
 // CardDelete is the builder for deleting a Card entity.
 type CardDelete struct {
 	config
-	hooks    []Hook
-	mutation *CardMutation
+	hooks       []Hook
+	mutation    *CardMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the CardDelete builder.
@@ -45,6 +46,7 @@ func (_d *CardDelete) ExecX(ctx context.Context) int {
 
 func (_d *CardDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(card.Table, sqlgraph.NewFieldSpec(card.FieldID, field.TypeInt))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *CardDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *CardDelete) WithRetryOptions(opts ...any) *CardDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // CardDeleteOne is the builder for deleting a single Card entity.

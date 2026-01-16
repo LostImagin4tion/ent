@@ -14,6 +14,7 @@ require (
 	github.com/lib/pq v1.10.7
 	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/stretchr/testify v1.11.1
+	github.com/ydb-platform/ydb-go-sdk/v3 v3.125.0
 	gocloud.dev v0.28.0
 )
 
@@ -32,7 +33,6 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/ydb-platform/ydb-go-genproto v0.0.0-20251222105147-0bf751469a4a // indirect
-	github.com/ydb-platform/ydb-go-sdk/v3 v3.125.0 // indirect
 	github.com/zclconf/go-cty v1.14.4 // indirect
 	github.com/zclconf/go-cty-yaml v1.1.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
@@ -50,4 +50,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace ariga.io/atlas => github.com/LostImagin4tion/atlas v0.0.5
+replace ariga.io/atlas => github.com/LostImagin4tion/atlas v0.0.18

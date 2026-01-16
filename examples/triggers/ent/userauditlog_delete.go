@@ -15,8 +15,9 @@ import (
 // UserAuditLogDelete is the builder for deleting a UserAuditLog entity.
 type UserAuditLogDelete struct {
 	config
-	hooks    []Hook
-	mutation *UserAuditLogMutation
+	hooks       []Hook
+	mutation    *UserAuditLogMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the UserAuditLogDelete builder.
@@ -41,6 +42,7 @@ func (_d *UserAuditLogDelete) ExecX(ctx context.Context) int {
 
 func (_d *UserAuditLogDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(userauditlog.Table, sqlgraph.NewFieldSpec(userauditlog.FieldID, field.TypeInt))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -54,6 +56,13 @@ func (_d *UserAuditLogDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *UserAuditLogDelete) WithRetryOptions(opts ...any) *UserAuditLogDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // UserAuditLogDeleteOne is the builder for deleting a single UserAuditLog entity.

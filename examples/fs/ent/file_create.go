@@ -19,8 +19,9 @@ import (
 // FileCreate is the builder for creating a File entity.
 type FileCreate struct {
 	config
-	mutation *FileMutation
-	hooks    []Hook
+	mutation    *FileMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetName sets the "name" field.
@@ -152,6 +153,7 @@ func (_c *FileCreate) createSpec() (*File, *sqlgraph.CreateSpec) {
 		_node = &File{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(file.Table, sqlgraph.NewFieldSpec(file.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(file.FieldName, field.TypeString, value)
 		_node.Name = value
@@ -196,11 +198,19 @@ func (_c *FileCreate) createSpec() (*File, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *FileCreate) WithRetryOptions(opts ...any) *FileCreate {
+	_c.retryConfig.Options = opts
+	return _c
+}
+
 // FileCreateBulk is the builder for creating many File entities in bulk.
 type FileCreateBulk struct {
 	config
-	err      error
-	builders []*FileCreate
+	err         error
+	builders    []*FileCreate
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Save creates the File entities in the database.
@@ -230,6 +240,7 @@ func (_c *FileCreateBulk) Save(ctx context.Context) ([]*File, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -282,4 +293,11 @@ func (_c *FileCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *FileCreateBulk) WithRetryOptions(opts ...any) *FileCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }

@@ -21,8 +21,9 @@ import (
 // CarCreate is the builder for creating a Car entity.
 type CarCreate struct {
 	config
-	mutation *CarMutation
-	hooks    []Hook
+	mutation    *CarMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetModel sets the "model" field.
@@ -122,6 +123,7 @@ func (_c *CarCreate) createSpec() (*Car, *sqlgraph.CreateSpec) {
 		_node = &Car{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(car.Table, sqlgraph.NewFieldSpec(car.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	if value, ok := _c.mutation.Model(); ok {
 		_spec.SetField(car.FieldModel, field.TypeString, value)
 		_node.Model = value
@@ -150,11 +152,19 @@ func (_c *CarCreate) createSpec() (*Car, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *CarCreate) WithRetryOptions(opts ...any) *CarCreate {
+	_c.retryConfig.Options = opts
+	return _c
+}
+
 // CarCreateBulk is the builder for creating many Car entities in bulk.
 type CarCreateBulk struct {
 	config
-	err      error
-	builders []*CarCreate
+	err         error
+	builders    []*CarCreate
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Save creates the Car entities in the database.
@@ -183,6 +193,7 @@ func (_c *CarCreateBulk) Save(ctx context.Context) ([]*Car, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -235,4 +246,11 @@ func (_c *CarCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *CarCreateBulk) WithRetryOptions(opts ...any) *CarCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }

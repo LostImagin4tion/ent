@@ -21,8 +21,9 @@ import (
 // TenantUpdate is the builder for updating Tenant entities.
 type TenantUpdate struct {
 	config
-	hooks    []Hook
-	mutation *TenantMutation
+	hooks       []Hook
+	mutation    *TenantMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the TenantUpdate builder.
@@ -87,6 +88,13 @@ func (_u *TenantUpdate) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *TenantUpdate) WithRetryOptions(opts ...any) *TenantUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *TenantUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -102,6 +110,7 @@ func (_u *TenantUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(tenant.FieldName, field.TypeString, value)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{tenant.Label}
@@ -117,9 +126,10 @@ func (_u *TenantUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // TenantUpdateOne is the builder for updating a single Tenant entity.
 type TenantUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *TenantMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *TenantMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetName sets the "name" field.
@@ -191,6 +201,13 @@ func (_u *TenantUpdateOne) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *TenantUpdateOne) WithRetryOptions(opts ...any) *TenantUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *TenantUpdateOne) sqlSave(ctx context.Context) (_node *Tenant, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -223,6 +240,7 @@ func (_u *TenantUpdateOne) sqlSave(ctx context.Context) (_node *Tenant, err erro
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(tenant.FieldName, field.TypeString, value)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Tenant{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

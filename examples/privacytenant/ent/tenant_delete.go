@@ -19,8 +19,9 @@ import (
 // TenantDelete is the builder for deleting a Tenant entity.
 type TenantDelete struct {
 	config
-	hooks    []Hook
-	mutation *TenantMutation
+	hooks       []Hook
+	mutation    *TenantMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the TenantDelete builder.
@@ -45,6 +46,7 @@ func (_d *TenantDelete) ExecX(ctx context.Context) int {
 
 func (_d *TenantDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(tenant.Table, sqlgraph.NewFieldSpec(tenant.FieldID, field.TypeInt))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *TenantDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *TenantDelete) WithRetryOptions(opts ...any) *TenantDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // TenantDeleteOne is the builder for deleting a single Tenant entity.

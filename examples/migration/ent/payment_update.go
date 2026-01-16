@@ -23,8 +23,9 @@ import (
 // PaymentUpdate is the builder for updating Payment entities.
 type PaymentUpdate struct {
 	config
-	hooks    []Hook
-	mutation *PaymentMutation
+	hooks       []Hook
+	mutation    *PaymentMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the PaymentUpdate builder.
@@ -190,6 +191,13 @@ func (_u *PaymentUpdate) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *PaymentUpdate) WithRetryOptions(opts ...any) *PaymentUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *PaymentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -249,6 +257,7 @@ func (_u *PaymentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{payment.Label}
@@ -264,9 +273,10 @@ func (_u *PaymentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // PaymentUpdateOne is the builder for updating a single Payment entity.
 type PaymentUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *PaymentMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *PaymentMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetCardID sets the "card_id" field.
@@ -439,6 +449,13 @@ func (_u *PaymentUpdateOne) check() error {
 	return nil
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *PaymentUpdateOne) WithRetryOptions(opts ...any) *PaymentUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *PaymentUpdateOne) sqlSave(ctx context.Context) (_node *Payment, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
@@ -515,6 +532,7 @@ func (_u *PaymentUpdateOne) sqlSave(ctx context.Context) (_node *Payment, err er
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Payment{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

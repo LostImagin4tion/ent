@@ -17,10 +17,11 @@ import (
 // PetUserNameQuery is the builder for querying PetUserName entities.
 type PetUserNameQuery struct {
 	config
-	ctx        *QueryContext
-	order      []petusername.OrderOption
-	inters     []Interceptor
-	predicates []predicate.PetUserName
+	ctx         *QueryContext
+	order       []petusername.OrderOption
+	inters      []Interceptor
+	predicates  []predicate.PetUserName
+	retryConfig sqlgraph.RetryConfig
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -270,6 +271,7 @@ func (_q *PetUserNameQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*
 		nodes = append(nodes, node)
 		return node.assignValues(columns, values)
 	}
+	_spec.RetryConfig = _q.retryConfig
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -284,6 +286,7 @@ func (_q *PetUserNameQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*
 
 func (_q *PetUserNameQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
+	_spec.RetryConfig = _q.retryConfig
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
 		_spec.Unique = _q.ctx.Unique != nil && *_q.ctx.Unique
@@ -358,6 +361,13 @@ func (_q *PetUserNameQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// WithRetryOptions sets the retry options for the query operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_q *PetUserNameQuery) WithRetryOptions(opts ...any) *PetUserNameQuery {
+	_q.retryConfig.Options = opts
+	return _q
 }
 
 // PetUserNameGroupBy is the group-by builder for PetUserName entities.

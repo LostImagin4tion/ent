@@ -15,8 +15,9 @@ import (
 // UserAuditLogCreate is the builder for creating a UserAuditLog entity.
 type UserAuditLogCreate struct {
 	config
-	mutation *UserAuditLogMutation
-	hooks    []Hook
+	mutation    *UserAuditLogMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetOperationType sets the "operation_type" field.
@@ -125,6 +126,7 @@ func (_c *UserAuditLogCreate) createSpec() (*UserAuditLog, *sqlgraph.CreateSpec)
 		_node = &UserAuditLog{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(userauditlog.Table, sqlgraph.NewFieldSpec(userauditlog.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	if value, ok := _c.mutation.OperationType(); ok {
 		_spec.SetField(userauditlog.FieldOperationType, field.TypeString, value)
 		_node.OperationType = value
@@ -144,11 +146,19 @@ func (_c *UserAuditLogCreate) createSpec() (*UserAuditLog, *sqlgraph.CreateSpec)
 	return _node, _spec
 }
 
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *UserAuditLogCreate) WithRetryOptions(opts ...any) *UserAuditLogCreate {
+	_c.retryConfig.Options = opts
+	return _c
+}
+
 // UserAuditLogCreateBulk is the builder for creating many UserAuditLog entities in bulk.
 type UserAuditLogCreateBulk struct {
 	config
-	err      error
-	builders []*UserAuditLogCreate
+	err         error
+	builders    []*UserAuditLogCreate
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Save creates the UserAuditLog entities in the database.
@@ -177,6 +187,7 @@ func (_c *UserAuditLogCreateBulk) Save(ctx context.Context) ([]*UserAuditLog, er
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -229,4 +240,11 @@ func (_c *UserAuditLogCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *UserAuditLogCreateBulk) WithRetryOptions(opts ...any) *UserAuditLogCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }

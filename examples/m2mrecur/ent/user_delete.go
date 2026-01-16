@@ -19,8 +19,9 @@ import (
 // UserDelete is the builder for deleting a User entity.
 type UserDelete struct {
 	config
-	hooks    []Hook
-	mutation *UserMutation
+	hooks       []Hook
+	mutation    *UserMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the UserDelete builder.
@@ -45,6 +46,7 @@ func (_d *UserDelete) ExecX(ctx context.Context) int {
 
 func (_d *UserDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(user.Table, sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *UserDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *UserDelete) WithRetryOptions(opts ...any) *UserDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // UserDeleteOne is the builder for deleting a single User entity.

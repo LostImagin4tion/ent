@@ -22,8 +22,9 @@ import (
 // CardCreate is the builder for creating a Card entity.
 type CardCreate struct {
 	config
-	mutation *CardMutation
-	hooks    []Hook
+	mutation    *CardMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetType sets the "type" field.
@@ -188,6 +189,7 @@ func (_c *CardCreate) createSpec() (*Card, *sqlgraph.CreateSpec) {
 		_node = &Card{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(card.Table, sqlgraph.NewFieldSpec(card.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	if value, ok := _c.mutation.GetType(); ok {
 		_spec.SetField(card.FieldType, field.TypeString, value)
 		_node.Type = value
@@ -240,11 +242,19 @@ func (_c *CardCreate) createSpec() (*Card, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *CardCreate) WithRetryOptions(opts ...any) *CardCreate {
+	_c.retryConfig.Options = opts
+	return _c
+}
+
 // CardCreateBulk is the builder for creating many Card entities in bulk.
 type CardCreateBulk struct {
 	config
-	err      error
-	builders []*CardCreate
+	err         error
+	builders    []*CardCreate
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Save creates the Card entities in the database.
@@ -274,6 +284,7 @@ func (_c *CardCreateBulk) Save(ctx context.Context) ([]*Card, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -326,4 +337,11 @@ func (_c *CardCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *CardCreateBulk) WithRetryOptions(opts ...any) *CardCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }

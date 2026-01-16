@@ -19,8 +19,9 @@ import (
 // SessionDeviceDelete is the builder for deleting a SessionDevice entity.
 type SessionDeviceDelete struct {
 	config
-	hooks    []Hook
-	mutation *SessionDeviceMutation
+	hooks       []Hook
+	mutation    *SessionDeviceMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the SessionDeviceDelete builder.
@@ -45,6 +46,7 @@ func (_d *SessionDeviceDelete) ExecX(ctx context.Context) int {
 
 func (_d *SessionDeviceDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(sessiondevice.Table, sqlgraph.NewFieldSpec(sessiondevice.FieldID, field.TypeUUID))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *SessionDeviceDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *SessionDeviceDelete) WithRetryOptions(opts ...any) *SessionDeviceDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // SessionDeviceDeleteOne is the builder for deleting a single SessionDevice entity.

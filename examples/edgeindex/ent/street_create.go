@@ -20,8 +20,9 @@ import (
 // StreetCreate is the builder for creating a Street entity.
 type StreetCreate struct {
 	config
-	mutation *StreetMutation
-	hooks    []Hook
+	mutation    *StreetMutation
+	hooks       []Hook
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetName sets the "name" field.
@@ -112,6 +113,7 @@ func (_c *StreetCreate) createSpec() (*Street, *sqlgraph.CreateSpec) {
 		_node = &Street{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(street.Table, sqlgraph.NewFieldSpec(street.FieldID, field.TypeInt))
 	)
+	_spec.RetryConfig = _c.retryConfig
 	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(street.FieldName, field.TypeString, value)
 		_node.Name = value
@@ -136,11 +138,19 @@ func (_c *StreetCreate) createSpec() (*Street, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// WithRetryOptions sets the retry options for the create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *StreetCreate) WithRetryOptions(opts ...any) *StreetCreate {
+	_c.retryConfig.Options = opts
+	return _c
+}
+
 // StreetCreateBulk is the builder for creating many Street entities in bulk.
 type StreetCreateBulk struct {
 	config
-	err      error
-	builders []*StreetCreate
+	err         error
+	builders    []*StreetCreate
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Save creates the Street entities in the database.
@@ -169,6 +179,7 @@ func (_c *StreetCreateBulk) Save(ctx context.Context) ([]*Street, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.RetryConfig = _c.retryConfig
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -221,4 +232,11 @@ func (_c *StreetCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// WithRetryOptions sets the retry options for the bulk create operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_c *StreetCreateBulk) WithRetryOptions(opts ...any) *StreetCreateBulk {
+	_c.retryConfig.Options = opts
+	return _c
 }

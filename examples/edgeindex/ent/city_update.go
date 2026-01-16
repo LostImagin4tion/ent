@@ -22,8 +22,9 @@ import (
 // CityUpdate is the builder for updating City entities.
 type CityUpdate struct {
 	config
-	hooks    []Hook
-	mutation *CityMutation
+	hooks       []Hook
+	mutation    *CityMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the CityUpdate builder.
@@ -114,6 +115,13 @@ func (_u *CityUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *CityUpdate) WithRetryOptions(opts ...any) *CityUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *CityUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(city.Table, city.Columns, sqlgraph.NewFieldSpec(city.FieldID, field.TypeInt))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -171,6 +179,7 @@ func (_u *CityUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{city.Label}
@@ -186,9 +195,10 @@ func (_u *CityUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // CityUpdateOne is the builder for updating a single City entity.
 type CityUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *CityMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *CityMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetName sets the "name" field.
@@ -286,6 +296,13 @@ func (_u *CityUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *CityUpdateOne) WithRetryOptions(opts ...any) *CityUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *CityUpdateOne) sqlSave(ctx context.Context) (_node *City, err error) {
 	_spec := sqlgraph.NewUpdateSpec(city.Table, city.Columns, sqlgraph.NewFieldSpec(city.FieldID, field.TypeInt))
 	id, ok := _u.mutation.ID()
@@ -360,6 +377,7 @@ func (_u *CityUpdateOne) sqlSave(ctx context.Context) (_node *City, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &City{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

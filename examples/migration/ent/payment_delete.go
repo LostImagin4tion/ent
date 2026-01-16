@@ -19,8 +19,9 @@ import (
 // PaymentDelete is the builder for deleting a Payment entity.
 type PaymentDelete struct {
 	config
-	hooks    []Hook
-	mutation *PaymentMutation
+	hooks       []Hook
+	mutation    *PaymentMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the PaymentDelete builder.
@@ -45,6 +46,7 @@ func (_d *PaymentDelete) ExecX(ctx context.Context) int {
 
 func (_d *PaymentDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(payment.Table, sqlgraph.NewFieldSpec(payment.FieldID, field.TypeInt))
+	_spec.RetryConfig = _d.retryConfig
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -58,6 +60,13 @@ func (_d *PaymentDelete) sqlExec(ctx context.Context) (int, error) {
 	}
 	_d.mutation.done = true
 	return affected, err
+}
+
+// WithRetryOptions sets the retry options for the delete operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_d *PaymentDelete) WithRetryOptions(opts ...any) *PaymentDelete {
+	_d.retryConfig.Options = opts
+	return _d
 }
 
 // PaymentDeleteOne is the builder for deleting a single Payment entity.

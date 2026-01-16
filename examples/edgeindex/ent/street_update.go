@@ -22,8 +22,9 @@ import (
 // StreetUpdate is the builder for updating Street entities.
 type StreetUpdate struct {
 	config
-	hooks    []Hook
-	mutation *StreetMutation
+	hooks       []Hook
+	mutation    *StreetMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // Where appends a list predicates to the StreetUpdate builder.
@@ -103,6 +104,13 @@ func (_u *StreetUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *StreetUpdate) WithRetryOptions(opts ...any) *StreetUpdate {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *StreetUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(street.Table, street.Columns, sqlgraph.NewFieldSpec(street.FieldID, field.TypeInt))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
@@ -144,6 +152,7 @@ func (_u *StreetUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{street.Label}
@@ -159,9 +168,10 @@ func (_u *StreetUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 // StreetUpdateOne is the builder for updating a single Street entity.
 type StreetUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *StreetMutation
+	fields      []string
+	hooks       []Hook
+	mutation    *StreetMutation
+	retryConfig sqlgraph.RetryConfig
 }
 
 // SetName sets the "name" field.
@@ -248,6 +258,13 @@ func (_u *StreetUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// WithRetryOptions sets the retry options for the update operation.
+// For YDB, these should be retry.Option values from ydb-go-sdk.
+func (_u *StreetUpdateOne) WithRetryOptions(opts ...any) *StreetUpdateOne {
+	_u.retryConfig.Options = opts
+	return _u
+}
+
 func (_u *StreetUpdateOne) sqlSave(ctx context.Context) (_node *Street, err error) {
 	_spec := sqlgraph.NewUpdateSpec(street.Table, street.Columns, sqlgraph.NewFieldSpec(street.FieldID, field.TypeInt))
 	id, ok := _u.mutation.ID()
@@ -306,6 +323,7 @@ func (_u *StreetUpdateOne) sqlSave(ctx context.Context) (_node *Street, err erro
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.RetryConfig = _u.retryConfig
 	_node = &Street{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues
