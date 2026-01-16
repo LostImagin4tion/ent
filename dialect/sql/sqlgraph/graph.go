@@ -246,14 +246,21 @@ func HasNeighbors(q *sql.Selector, s *Step) {
 			pk1 = s.Edge.Columns[1]
 		}
 		join := builder.Table(s.Edge.Table).Schema(s.Edge.Schema)
-		q.Where(
-			sql.In(
-				q.C(s.From.Column),
-				builder.Select(join.C(pk1)).From(join),
-			),
-		)
+
+		if q.Dialect() == dialect.YDB {
+			q.LeftSemiJoin(join).On(q.C(s.From.Column), join.C(pk1))
+		} else {
+			q.Where(
+				sql.In(
+					q.C(s.From.Column),
+					builder.Select(join.C(pk1)).From(join),
+				),
+			)
+		}
+
 	case s.FromEdgeOwner():
 		q.Where(sql.NotNull(q.C(s.Edge.Columns[0])))
+
 	case s.ToEdgeOwner():
 		to := builder.Table(s.Edge.Table).Schema(s.Edge.Schema)
 		// In case the edge reside on the same table, give
@@ -261,16 +268,9 @@ func HasNeighbors(q *sql.Selector, s *Step) {
 		if s.From.Table == s.Edge.Table {
 			to.As(fmt.Sprintf("%s_edge", s.Edge.Table))
 		}
-		
-		// YDB doesn't support correlated EXISTS subqueries.
-		// Use IN subquery instead for YDB dialect.
+
 		if q.Dialect() == dialect.YDB {
-			q.Where(
-				sql.In(
-					q.C(s.From.Column),
-					builder.Select(to.C(s.Edge.Columns[0])).From(to),
-				),
-			)
+			q.LeftSemiJoin(to).On(q.C(s.From.Column), to.C(s.Edge.Columns[0]))
 		} else {
 			q.Where(
 				sql.Exists(
@@ -300,15 +300,29 @@ func HasNeighborsWith(q *sql.Selector, s *Step, pred func(*sql.Selector)) {
 		}
 		to := builder.Table(s.To.Table).Schema(s.To.Schema)
 		edge := builder.Table(s.Edge.Table).Schema(s.Edge.Schema)
-		join := builder.Select(edge.C(pk2)).
-			From(edge).
-			Join(to).
-			On(edge.C(pk1), to.C(s.To.Column))
-		matches := builder.Select().From(to)
-		matches.WithContext(q.Context())
-		pred(matches)
-		join.FromSelect(matches)
-		q.Where(sql.In(q.C(s.From.Column), join))
+
+		if q.Dialect() == dialect.YDB {
+			matches := builder.Select(to.C(s.To.Column)).From(to)
+			matches.WithContext(q.Context())
+			pred(matches)
+
+			join := builder.Select(edge.C(pk2)).
+				From(edge).
+				Join(matches).
+				On(edge.C(pk1), matches.C(s.To.Column))
+
+			q.LeftSemiJoin(join).On(q.C(s.From.Column), join.C(pk2))
+		} else {
+			join := builder.Select(edge.C(pk2)).
+				From(edge).
+				Join(to).
+				On(edge.C(pk1), to.C(s.To.Column))
+			matches := builder.Select().From(to)
+			matches.WithContext(q.Context())
+			pred(matches)
+			join.FromSelect(matches)
+			q.Where(sql.In(q.C(s.From.Column), join))
+		}
 
 	case s.FromEdgeOwner():
 		to := builder.Table(s.To.Table).Schema(s.To.Schema)
@@ -326,13 +340,11 @@ func HasNeighborsWith(q *sql.Selector, s *Step, pred func(*sql.Selector)) {
 			}
 		}
 
-		// YDB doesn't support correlated EXISTS subqueries.
-		// Use IN subquery instead for YDB dialect.
 		if q.Dialect() == dialect.YDB {
 			matches := builder.Select(to.C(s.To.Column)).From(to)
 			matches.WithContext(q.Context())
 			pred(matches)
-			q.Where(sql.In(q.C(s.Edge.Columns[0]), matches))
+			q.LeftSemiJoin(matches).On(q.C(s.Edge.Columns[0]), matches.C(s.To.Column))
 		} else {
 			matches := builder.Select(to.C(s.To.Column)).
 				From(to)
@@ -362,14 +374,13 @@ func HasNeighborsWith(q *sql.Selector, s *Step, pred func(*sql.Selector)) {
 				to.As(fmt.Sprintf("%s_edge_%d", s.Edge.Table, i))
 			}
 		}
-		
-		// YDB doesn't support correlated EXISTS subqueries.
-		// Use IN subquery instead for YDB dialect.
+
 		if q.Dialect() == dialect.YDB {
+			// YDB: Use LEFT SEMI JOIN for better optimizer support.
 			matches := builder.Select(to.C(s.Edge.Columns[0])).From(to)
 			matches.WithContext(q.Context())
 			pred(matches)
-			q.Where(sql.In(q.C(s.From.Column), matches))
+			q.LeftSemiJoin(matches).On(q.C(s.From.Column), matches.C(s.Edge.Columns[0]))
 		} else {
 			matches := builder.Select(to.C(s.Edge.Columns[0])).
 				From(to)
@@ -1500,10 +1511,10 @@ func (u *updater) ensureExists(ctx context.Context) error {
 		From(u.builder.Table(u.Node.Table).Schema(u.Node.Schema)).
 		Where(sql.EQ(u.Node.ID.Column, u.Node.ID.Value))
 	u.Predicate(selector)
-	
+
 	var query string
 	var args []any
-	
+
 	// YDB doesn't fully support EXISTS in all contexts.
 	// Use COUNT(*) > 0 approach instead for better compatibility.
 	if selector.Dialect() == dialect.YDB {
@@ -1512,13 +1523,13 @@ func (u *updater) ensureExists(ctx context.Context) error {
 	} else {
 		query, args = u.builder.SelectExpr(sql.Exists(selector)).Query()
 	}
-	
+
 	rows := &sql.Rows{}
 	if err := u.tx.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
 	defer rows.Close()
-	
+
 	var found bool
 	if selector.Dialect() == dialect.YDB {
 		count, err := sql.ScanInt(rows)
@@ -1533,7 +1544,7 @@ func (u *updater) ensureExists(ctx context.Context) error {
 			return err
 		}
 	}
-	
+
 	if !found {
 		return &NotFoundError{table: u.Node.Table, id: u.Node.ID.Value}
 	}
