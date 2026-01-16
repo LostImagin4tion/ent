@@ -7,7 +7,15 @@ in the LICENSE file in the root directory of this source tree.
 {{/* gotype: entgo.io/ent/entc/gen.Graph */}}
 
 {{ define "dialect/sql/client/open" }}
-	drv, err := sql.Open(driverName, dataSourceName)
+	var (
+		drv dialect.Driver
+		err error
+	)
+	if driverName == dialect.YDB {
+		drv, err = ydb.Open(context.Background(), dataSourceName)
+	} else {
+		drv, err = sql.Open(driverName, dataSourceName)
+	}
 	if err != nil {
 		return nil, err
 	}
