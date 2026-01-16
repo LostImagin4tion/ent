@@ -261,18 +261,30 @@ func HasNeighbors(q *sql.Selector, s *Step) {
 		if s.From.Table == s.Edge.Table {
 			to.As(fmt.Sprintf("%s_edge", s.Edge.Table))
 		}
-		q.Where(
-			sql.Exists(
-				builder.Select(to.C(s.Edge.Columns[0])).
-					From(to).
-					Where(
-						sql.ColumnsEQ(
-							q.C(s.From.Column),
-							to.C(s.Edge.Columns[0]),
+		
+		// YDB doesn't support correlated EXISTS subqueries.
+		// Use IN subquery instead for YDB dialect.
+		if q.Dialect() == dialect.YDB {
+			q.Where(
+				sql.In(
+					q.C(s.From.Column),
+					builder.Select(to.C(s.Edge.Columns[0])).From(to),
+				),
+			)
+		} else {
+			q.Where(
+				sql.Exists(
+					builder.Select(to.C(s.Edge.Columns[0])).
+						From(to).
+						Where(
+							sql.ColumnsEQ(
+								q.C(s.From.Column),
+								to.C(s.Edge.Columns[0]),
+							),
 						),
-					),
-			),
-		)
+				),
+			)
+		}
 	}
 }
 
@@ -1481,18 +1493,45 @@ func (u *updater) scan(rows *sql.Rows) error {
 }
 
 func (u *updater) ensureExists(ctx context.Context) error {
-	exists := u.builder.Select().From(u.builder.Table(u.Node.Table).Schema(u.Node.Schema)).Where(sql.EQ(u.Node.ID.Column, u.Node.ID.Value))
-	u.Predicate(exists)
-	query, args := u.builder.SelectExpr(sql.Exists(exists)).Query()
+	selector := u.builder.
+		Select().
+		From(u.builder.Table(u.Node.Table).Schema(u.Node.Schema)).
+		Where(sql.EQ(u.Node.ID.Column, u.Node.ID.Value))
+	u.Predicate(selector)
+	
+	var query string
+	var args []any
+	
+	// YDB doesn't fully support EXISTS in all contexts.
+	// Use COUNT(*) > 0 approach instead for better compatibility.
+	if selector.Dialect() == dialect.YDB {
+		selector.Count("*")
+		query, args = selector.Query()
+	} else {
+		query, args = u.builder.SelectExpr(sql.Exists(selector)).Query()
+	}
+	
 	rows := &sql.Rows{}
 	if err := u.tx.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
 	defer rows.Close()
-	found, err := sql.ScanBool(rows)
-	if err != nil {
-		return err
+	
+	var found bool
+	if selector.Dialect() == dialect.YDB {
+		count, err := sql.ScanInt(rows)
+		if err != nil {
+			return err
+		}
+		found = count > 0
+	} else {
+		var err error
+		found, err = sql.ScanBool(rows)
+		if err != nil {
+			return err
+		}
 	}
+	
 	if !found {
 		return &NotFoundError{table: u.Node.Table, id: u.Node.ID.Value}
 	}
@@ -1833,7 +1872,8 @@ func (g *graph) addM2MEdges(ctx context.Context, ids []driver.Value, edges EdgeS
 		}
 		// Ignore conflicts only if edges do not contain extra fields, because these fields
 		// can hold different values on different insertions (e.g. time.Now() or uuid.New()).
-		if len(edges[0].Target.Fields) == 0 {
+		// YDB doesn't support ON CONFLICT clause, so skip it for YDB dialect.
+		if len(edges[0].Target.Fields) == 0 && insert.Dialect() != dialect.YDB {
 			insert.OnConflict(sql.DoNothing())
 		}
 		query, args := insert.Query()
@@ -1868,7 +1908,8 @@ func (g *graph) batchAddM2M(ctx context.Context, spec *BatchCreateSpec) error {
 				}
 				// Ignore conflicts only if edges do not contain extra fields, because these fields
 				// can hold different values on different insertions (e.g. time.Now() or uuid.New()).
-				if len(edge.Target.Fields) == 0 {
+				// YDB doesn't support ON CONFLICT clause, so skip it for YDB dialect.
+				if len(edge.Target.Fields) == 0 && insert.Dialect() != dialect.YDB {
 					insert.OnConflict(sql.DoNothing())
 				}
 			}
