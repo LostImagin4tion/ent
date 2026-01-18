@@ -23,31 +23,6 @@ func NewRetryExecutor(db *sql.DB) *RetryExecutor {
 	return &RetryExecutor{db: db}
 }
 
-// DoTx executes the operation within a transaction with retry support.
-// It uses ydb-go-sdk's retry.DoTx which handles YDB-specific retryable errors.
-// Options should be created using retry.WithIdempotent(), retry.WithLabel(), etc.
-func (r *RetryExecutor) DoTx(
-	ctx context.Context,
-	fn func(ctx context.Context, drv dialect.Driver) error,
-	opts ...any,
-) error {
-	retryOpts := make([]retry.Option, 0, len(opts))
-	for _, opt := range opts {
-		if ro, ok := opt.(retry.Option); ok {
-			retryOpts = append(retryOpts, ro)
-		}
-	}
-
-	return retry.DoTx(
-		ctx,
-		r.db,
-		func(ctx context.Context, tx *sql.Tx) error {
-			return fn(ctx, NewTxRetryDriver(tx))
-		},
-		retry.WithDoTxRetryOptions(retryOpts...),
-	)
-}
-
 // Do executes a read-only operation with retry support.
 // It uses ydb-go-sdk's retry.Do which handles YDB-specific retryable errors.
 // Options should be created using retry.WithIdempotent(), retry.WithLabel(), etc.
@@ -70,6 +45,31 @@ func (r *RetryExecutor) Do(
 			return fn(ctx, NewRetryDriver(conn))
 		},
 		retry.WithDoRetryOptions(retryOpts...),
+	)
+}
+
+// DoTx executes the operation within a transaction with retry support.
+// It uses ydb-go-sdk's retry.DoTx which handles YDB-specific retryable errors.
+// Options should be created using retry.WithIdempotent(), retry.WithLabel(), etc.
+func (r *RetryExecutor) DoTx(
+	ctx context.Context,
+	fn func(ctx context.Context, drv dialect.Driver) error,
+	opts ...any,
+) error {
+	retryOpts := make([]retry.Option, 0, len(opts))
+	for _, opt := range opts {
+		if ro, ok := opt.(retry.Option); ok {
+			retryOpts = append(retryOpts, ro)
+		}
+	}
+
+	return retry.DoTx(
+		ctx,
+		r.db,
+		func(ctx context.Context, tx *sql.Tx) error {
+			return fn(ctx, NewTxRetryDriver(tx))
+		},
+		retry.WithDoTxRetryOptions(retryOpts...),
 	)
 }
 
@@ -102,7 +102,7 @@ func (d *RetryDriver) Tx(ctx context.Context) (dialect.Tx, error) {
 	return dialect.NopTx(d), nil
 }
 
-// Close is a no-op for TxDriver since retry.DoTx manages the transaction lifecycle.
+// Close is a no-op for RetryDriver since retry.DoTx manages the transaction lifecycle.
 func (d *RetryDriver) Close() error {
 	return nil
 }
