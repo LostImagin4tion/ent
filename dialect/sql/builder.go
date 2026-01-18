@@ -3726,6 +3726,11 @@ func Dialect(name string) *DialectBuilder {
 	return &DialectBuilder{name}
 }
 
+// Dialect returns the dialect name of this builder.
+func (d *DialectBuilder) Dialect() string {
+	return d.dialect
+}
+
 // String builds a dialect-aware expression string from the given callback.
 func (d *DialectBuilder) String(f func(*Builder)) string {
 	b := &Builder{}

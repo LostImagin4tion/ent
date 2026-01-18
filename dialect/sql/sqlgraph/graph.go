@@ -1559,8 +1559,13 @@ type creator struct {
 func (c *creator) node(ctx context.Context, drv dialect.Driver) error {
 	var (
 		edges  = EdgeSpecs(c.Edges).GroupRel()
-		insert = c.builder.Insert(c.Table).Schema(c.Schema).Default()
+		insert *sql.InsertBuilder
 	)
+	if c.builder.Dialect() == dialect.YDB {
+		insert = c.builder.Upsert(c.Table).Schema(c.Schema)
+	} else {
+		insert = c.builder.Insert(c.Table).Schema(c.Schema).Default()
+	}
 	if err := c.setTableColumns(insert, edges); err != nil {
 		return err
 	}
@@ -1634,6 +1639,10 @@ func (c *creator) insert(ctx context.Context, insert *sql.InsertBuilder) error {
 
 // ensureConflict ensures the ON CONFLICT is added to the insert statement.
 func (c *creator) ensureConflict(insert *sql.InsertBuilder) {
+	// YDB doesn't support ON CONFLICT clause - UPSERT handles conflicts implicitly.
+	if insert.Dialect() == dialect.YDB {
+		return
+	}
 	if opts := c.CreateSpec.OnConflict; len(opts) > 0 {
 		insert.OnConflict(opts...)
 		c.ensureLastInsertID(insert)
@@ -1700,7 +1709,16 @@ func (c *batchCreator) nodes(ctx context.Context, drv dialect.Driver) error {
 		}
 	}
 	sorted := keys(columns)
-	insert := c.builder.Insert(c.Nodes[0].Table).Schema(c.Nodes[0].Schema).Default().Columns(sorted...)
+
+	// For YDB dialect, always use UPSERT instead of INSERT,
+	// since YDB doesn't support the ON CONFLICT clause.
+	var insert *sql.InsertBuilder
+	if c.builder.Dialect() == dialect.YDB {
+		insert = c.builder.Upsert(c.Nodes[0].Table).Schema(c.Nodes[0].Schema).Columns(sorted...)
+	} else {
+		insert = c.builder.Insert(c.Nodes[0].Table).Schema(c.Nodes[0].Schema).Default().Columns(sorted...)
+	}
+
 	for i := range values {
 		vs := make([]any, len(sorted))
 		for j, c := range sorted {
@@ -1762,6 +1780,10 @@ func (c *batchCreator) batchInsert(ctx context.Context, tx dialect.ExecQuerier, 
 
 // ensureConflict ensures the ON CONFLICT is added to the insert statement.
 func (c *batchCreator) ensureConflict(insert *sql.InsertBuilder) {
+	// YDB doesn't support ON CONFLICT clause - UPSERT handles conflicts implicitly.
+	if insert.Dialect() == dialect.YDB {
+		return
+	}
 	if opts := c.BatchCreateSpec.OnConflict; len(opts) > 0 {
 		insert.OnConflict(opts...)
 	}
@@ -1865,7 +1887,15 @@ func (g *graph) addM2MEdges(ctx context.Context, ids []driver.Value, edges EdgeS
 			values = append(values, f.Value)
 			columns = append(columns, f.Column)
 		}
-		insert := g.builder.Insert(table).Columns(columns...)
+
+		// YDB doesn't support ON CONFLICT clause. Use UPSERT for M2M edges without extra fields
+		var insert *sql.InsertBuilder
+		if len(edges[0].Target.Fields) == 0 && g.builder.Dialect() == dialect.YDB {
+			insert = g.builder.Upsert(table).Columns(columns...)
+		} else {
+			insert = g.builder.Insert(table).Columns(columns...)
+		}
+
 		if edges[0].Schema != "" {
 			// If the Schema field was provided to the EdgeSpec (by the
 			// generated code), it should be the same for all EdgeSpecs.
@@ -1913,7 +1943,14 @@ func (g *graph) batchAddM2M(ctx context.Context, spec *BatchCreateSpec) error {
 				for _, f := range edge.Target.Fields {
 					columns = append(columns, f.Column)
 				}
-				insert = g.builder.Insert(name).Columns(columns...)
+
+				// YDB doesn't support ON CONFLICT clause. Use UPSERT for M2M edges without extra fields.
+				if len(edge.Target.Fields) == 0 && g.builder.Dialect() == dialect.YDB {
+					insert = g.builder.Upsert(name).Columns(columns...)
+				} else {
+					insert = g.builder.Insert(name).Columns(columns...)
+				}
+
 				if edge.Schema != "" {
 					// If the Schema field was provided to the EdgeSpec (by the
 					// generated code), it should be the same for all EdgeSpecs.
