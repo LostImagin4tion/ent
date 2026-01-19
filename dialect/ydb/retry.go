@@ -31,20 +31,13 @@ func (r *RetryExecutor) Do(
 	fn func(ctx context.Context, drv dialect.Driver) error,
 	opts ...any,
 ) error {
-	retryOpts := make([]retry.Option, 0, len(opts))
-	for _, opt := range opts {
-		if ro, ok := opt.(retry.Option); ok {
-			retryOpts = append(retryOpts, ro)
-		}
-	}
-
 	return retry.Do(
 		ctx,
 		r.db,
 		func(ctx context.Context, conn *sql.Conn) error {
 			return fn(ctx, NewRetryDriver(conn))
 		},
-		retry.WithDoRetryOptions(retryOpts...),
+		retry.WithDoRetryOptions(toRetryOptions(opts)...),
 	)
 }
 
@@ -56,21 +49,25 @@ func (r *RetryExecutor) DoTx(
 	fn func(ctx context.Context, drv dialect.Driver) error,
 	opts ...any,
 ) error {
-	retryOpts := make([]retry.Option, 0, len(opts))
-	for _, opt := range opts {
-		if ro, ok := opt.(retry.Option); ok {
-			retryOpts = append(retryOpts, ro)
-		}
-	}
-
 	return retry.DoTx(
 		ctx,
 		r.db,
 		func(ctx context.Context, tx *sql.Tx) error {
 			return fn(ctx, NewTxRetryDriver(tx))
 		},
-		retry.WithDoTxRetryOptions(retryOpts...),
+		retry.WithDoTxRetryOptions(toRetryOptions(opts)...),
 	)
+}
+
+// toRetryOptions converts a slice of any options to retry.Option slice
+func toRetryOptions(opts []any) []retry.Option {
+	retryOpts := make([]retry.Option, 0, len(opts))
+	for _, opt := range opts {
+		if ro, ok := opt.(retry.Option); ok {
+			retryOpts = append(retryOpts, ro)
+		}
+	}
+	return retryOpts
 }
 
 // RetryDriver is designed for use only in sqlgraph,

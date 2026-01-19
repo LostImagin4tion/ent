@@ -791,10 +791,7 @@ func CreateNode(ctx context.Context, drv dialect.Driver, spec *CreateSpec) error
 		cr := &creator{CreateSpec: spec, graph: gr}
 		return cr.node(ctx, d)
 	}
-	if retry := getRetryExecutor(drv); retry != nil {
-		return retry.DoTx(ctx, op, spec.RetryConfig.Options...)
-	}
-	return op(ctx, drv)
+	return execWithRetryTx(ctx, drv, op, spec.RetryConfig.Options)
 }
 
 // BatchCreate applies the BatchCreateSpec on the graph.
@@ -804,8 +801,13 @@ func BatchCreate(ctx context.Context, drv dialect.Driver, spec *BatchCreateSpec)
 		cr := &batchCreator{BatchCreateSpec: spec, graph: gr}
 		return cr.nodes(ctx, d)
 	}
+	return execWithRetryTx(ctx, drv, op, spec.RetryConfig.Options)
+}
+
+// execWithRetryTx executes the operation with retry if available, otherwise executes directly.
+func execWithRetryTx(ctx context.Context, drv dialect.Driver, op func(context.Context, dialect.Driver) error, opts []any) error {
 	if retry := getRetryExecutor(drv); retry != nil {
-		return retry.DoTx(ctx, op, spec.RetryConfig.Options...)
+		return retry.DoTx(ctx, op, opts...)
 	}
 	return op(ctx, drv)
 }
