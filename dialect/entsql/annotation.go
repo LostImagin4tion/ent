@@ -550,14 +550,18 @@ type IndexAnnotation struct {
 	DescColumns map[string]bool
 
 	// IncludeColumns defines the INCLUDE clause for the index.
-	// Works only in Postgres and its definition is as follows:
+	// Works only in Postgres and YDB. Its definition is as follows:
 	//
 	//	index.Fields("c1").
 	//		Annotation(
 	//			entsql.IncludeColumns("c2"),
 	//		)
 	//
+	//  Postgres:
 	//	CREATE INDEX "table_column" ON "table"("c1") INCLUDE ("c2")
+	//
+	//  YDB:
+	//	ALTER TABLE `table` ADD INDEX `table_column` GLOBAL SYNC ON (`c1`) COVER (`c2`)
 	//
 	IncludeColumns []string
 

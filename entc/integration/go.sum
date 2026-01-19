@@ -5,8 +5,8 @@ cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMT
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/DATA-DOG/go-sqlmock v1.5.0 h1:Shsta01QNfFxHCfpW6YH2STWB0MudeXXEWMr20OEh60=
 github.com/DATA-DOG/go-sqlmock v1.5.0/go.mod h1:f/Ixk793poVmq4qj/V1dPUg2JEAKC73Q5eFN3EC/SaM=
-github.com/LostImagin4tion/atlas v0.0.18 h1:RrLLU6zEXuRZAih3slblKFZ/lPLUDZ+wrHaTrxILqrA=
-github.com/LostImagin4tion/atlas v0.0.18/go.mod h1:Rco1malutATQGeWEoYFzurfzIvs+galayoZ0+Pz4als=
+github.com/LostImagin4tion/atlas v0.0.20 h1:s/t3TGb/uYvgJRN2rzNHK+ioIih+4BtOk7DlCStNvqE=
+github.com/LostImagin4tion/atlas v0.0.20/go.mod h1:Rco1malutATQGeWEoYFzurfzIvs+galayoZ0+Pz4als=
 github.com/agext/levenshtein v1.2.3 h1:YB2fHEn0UJagG8T1rrWknE3ZQzWM06O8AMAatNn7lmo=
 github.com/agext/levenshtein v1.2.3/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=

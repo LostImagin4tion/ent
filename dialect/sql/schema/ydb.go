@@ -197,9 +197,6 @@ func (d *YDB) atUniqueC(
 	idxName := fmt.Sprintf("%s_%s_index", table1.Name, column1.Name)
 	index := schema.NewUniqueIndex(idxName).AddColumns(column2)
 
-	// Add YDB-specific attribute for GLOBAL SYNC index type.
-	index.AddAttrs(&atlas.IndexAttributes{Global: true, Sync: true})
-
 	table2.AddIndexes(index)
 }
 
@@ -236,24 +233,35 @@ func (d *YDB) atIndex(
 
 	// Set YDB-specific index attributes.
 	// By default, use GLOBAL SYNC for consistency.
-	idxType := &atlas.IndexAttributes{Global: true, Sync: true}
+	idxAttrs := &atlas.IndexAttributes{}
 
-	// Check for annotation overrides.
 	if index1.Annotation != nil {
+		annotation := index1.Annotation
+
+		if len(annotation.IncludeColumns) > 0 {
+			columns := make([]*schema.Column, len(annotation.IncludeColumns))
+
+			for i, include := range annotation.IncludeColumns {
+				column, ok := table2.Column(include)
+				if !ok {
+					return fmt.Errorf("include column %q was not found for index %q", include, index1.Name)
+				}
+				columns[i] = column
+			}
+
+			idxAttrs.CoverColumns = columns
+		}
+
 		if indexType, ok := indexType(index1, dialect.YDB); ok {
-			// Parse YDB-specific index type from annotation.
-			switch strings.ToUpper(indexType) {
-			case "GLOBAL ASYNC", "ASYNC":
-				idxType.Sync = false
-			case "LOCAL":
-				idxType.Global = false
-			case "LOCAL ASYNC":
-				idxType.Global = false
-				idxType.Sync = false
+			upperIndexType := strings.ToUpper(indexType)
+
+			if strings.Contains(upperIndexType, "ASYNC") {
+				idxAttrs.Async = true
 			}
 		}
 	}
-	index2.AddAttrs(idxType)
+
+	index2.AddAttrs(idxAttrs)
 	return nil
 }
 

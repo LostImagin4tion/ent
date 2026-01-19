@@ -64,4 +64,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace ariga.io/atlas => github.com/LostImagin4tion/atlas v0.0.18
+replace ariga.io/atlas => github.com/LostImagin4tion/atlas v0.0.20
