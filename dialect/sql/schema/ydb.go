@@ -6,7 +6,6 @@ package schema
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -163,7 +162,9 @@ func (d *YDB) atTypeC(column1 *Column, column2 *schema.Column) error {
 	case field.TypeUUID:
 		typ = &schema.UUIDType{T: atlas.TypeUUID}
 	case field.TypeEnum:
-		err = errors.New("ydb: Enum can't be used as column data type for tables")
+		// YDB doesn't support enum types in DDL statements
+		// But ent can handle enum validation, so we just map it to Utf8
+		typ = &schema.StringType{T: atlas.TypeUtf8}
 	case field.TypeOther:
 		typ = &schema.UnsupportedType{T: column1.typ}
 	default:
@@ -186,6 +187,10 @@ func (d *YDB) atUniqueC(
 	table2 *schema.Table,
 	column2 *schema.Column,
 ) {
+	if !canBeIndexKey(column1) {
+		return
+	}
+
 	// Check if there's already an explicit unique index defined for this column.
 	for _, idx := range table1.Indexes {
 		if idx.Unique && len(idx.Columns) == 1 && idx.Columns[0].Name == column1.Name {
@@ -224,10 +229,19 @@ func (d *YDB) atIndex(
 	index2 *schema.Index,
 ) error {
 	for _, column1 := range index1.Columns {
+		if isPrimaryKeyColumn(table2, column1.Name) {
+			continue
+		}
+
 		column2, ok := table2.Column(column1.Name)
 		if !ok {
 			return fmt.Errorf("unexpected index %q column: %q", index1.Name, column1.Name)
 		}
+
+		if !canBeIndexKeyBySchema(column2) {
+			continue
+		}
+
 		index2.AddParts(&schema.IndexPart{C: column2})
 	}
 
@@ -276,4 +290,42 @@ func (*YDB) atTypeRangeSQL(ts ...string) string {
 		TypeTable,
 		strings.Join(values, ", "),
 	)
+}
+
+// canBeIndexKey checks if a column type can be used as an index key in YDB.
+// YDB doesn't allow Float/Double types as index keys.
+func canBeIndexKey(column *Column) bool {
+	switch column.Type {
+	case field.TypeFloat32, field.TypeFloat64:
+		return false
+	default:
+		return true
+	}
+}
+
+// canBeIndexKeyBySchema checks if a column type can be used as an index key in YDB
+// by checking the Atlas schema column type.
+func canBeIndexKeyBySchema(column *schema.Column) bool {
+	if column.Type == nil || column.Type.Type == nil {
+		return true
+	}
+	switch column.Type.Type.(type) {
+	case *schema.FloatType:
+		return false
+	default:
+		return true
+	}
+}
+
+// isPrimaryKeyColumn checks if a column is part of the table's primary key.
+func isPrimaryKeyColumn(table *schema.Table, columnName string) bool {
+	if table.PrimaryKey == nil {
+		return false
+	}
+	for _, primaryKeyPart := range table.PrimaryKey.Parts {
+		if primaryKeyPart.C != nil && primaryKeyPart.C.Name == columnName {
+			return true
+		}
+	}
+	return false
 }

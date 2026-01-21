@@ -1096,6 +1096,11 @@ func (a *Atlas) aIndexes(et *Table, at *schema.Table) error {
 		if err := a.sqlDialect.atIndex(idx1, at, idx2); err != nil {
 			return err
 		}
+
+		if len(idx2.Parts) == 0 {
+			continue
+		}
+
 		desc := descIndexes(idx1)
 		for _, p := range idx2.Parts {
 			p.Desc = desc[p.C.Name]
