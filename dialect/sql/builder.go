@@ -854,8 +854,7 @@ func Delete(table string) *DeleteBuilder { return &DeleteBuilder{table: table} }
 //
 // Note: BATCH DELETE is only supported in YDB dialect.
 //
-// BatchDelete("/local/my_table").
-// 		Where(GT("Key1", 1))
+// BatchDelete("/local/my_table").Where(GT("Key1", 1))
 func BatchDelete(table string) *DeleteBuilder {
 	return &DeleteBuilder{table: table, isBatch: true}
 }
@@ -3544,7 +3543,14 @@ func (b *Builder) Argf(format string, a any) *Builder {
 	if b.ydb() {
 		// Extract parameter name from format (e.g., "$p0" -> "p0")
 		paramName := strings.TrimPrefix(format, "$")
-		b.args = append(b.args, driver.NamedValue{Name: paramName, Value: a})
+
+		// Convert the value using standard converter to handle custom types
+		convertedValue, err := driver.DefaultParameterConverter.ConvertValue(a)
+		if err != nil {
+			convertedValue = a
+		}
+
+		b.args = append(b.args, driver.NamedValue{Name: paramName, Value: convertedValue})
 	} else {
 		b.args = append(b.args, a)
 	}
