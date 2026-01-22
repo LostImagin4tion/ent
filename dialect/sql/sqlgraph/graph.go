@@ -2024,19 +2024,44 @@ func (g *graph) addFKEdges(ctx context.Context, ids []driver.Value, edges []*Edg
 		if len(edge.Target.Nodes) > 1 {
 			p = sql.InValues(edge.Target.IDSpec.Column, edge.Target.Nodes...)
 		}
-		query, args := g.builder.Update(edge.Table).
+
+		update := g.builder.Update(edge.Table).
 			Schema(edge.Schema).
 			Set(edge.Columns[0], id).
-			Where(sql.And(p, sql.IsNull(edge.Columns[0]))).
-			Query()
-		var res sql.Result
-		if err := g.tx.Exec(ctx, query, args, &res); err != nil {
-			return fmt.Errorf("add %s edge for table %s: %w", edge.Rel, edge.Table, err)
+			Where(sql.And(p, sql.IsNull(edge.Columns[0])))
+
+		var affected int64
+
+		// YDB's RowsAffected() is incostistent.
+		// Use UPDATE ... RETURNING to count affected rows instead.
+		if g.builder.Dialect() == dialect.YDB {
+			update.Returning(edge.Target.IDSpec.Column)
+			query, args := update.Query()
+			rows := &sql.Rows{}
+			if err := g.tx.Query(ctx, query, args, rows); err != nil {
+				return fmt.Errorf("add %s edge for table %s: %w", edge.Rel, edge.Table, err)
+			}
+			for rows.Next() {
+				affected++
+			}
+			if err := rows.Err(); err != nil {
+				rows.Close()
+				return err
+			}
+			rows.Close()
+		} else {
+			query, args := update.Query()
+			var res sql.Result
+			if err := g.tx.Exec(ctx, query, args, &res); err != nil {
+				return fmt.Errorf("add %s edge for table %s: %w", edge.Rel, edge.Table, err)
+			}
+			n, err := res.RowsAffected()
+			if err != nil {
+				return err
+			}
+			affected = n
 		}
-		affected, err := res.RowsAffected()
-		if err != nil {
-			return err
-		}
+
 		// Setting the FK value of the "other" table without clearing it before, is not allowed.
 		// Including no-op (same id), because we rely on "affected" to determine if the FK set.
 		if ids := edge.Target.Nodes; int(affected) < len(ids) {
