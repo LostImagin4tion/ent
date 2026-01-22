@@ -132,6 +132,28 @@ func TestPostgres(t *testing.T) {
 	}
 }
 
+func TestYDB(t *testing.T) {
+	t.Parallel()
+
+	ydbOpts := enttest.WithMigrateOptions(
+		migrate.WithDropIndex(true),
+		migrate.WithDropColumn(true),
+		migrate.WithForeignKeys(false),
+		sqlschema.WithSkipChanges(sqlschema.ModifyColumn),
+	)
+
+	client := enttest.Open(t, dialect.YDB, "grpc://localhost:2136/local", ydbOpts)
+	defer client.Close()
+
+	for _, tt := range tests {
+		name := runtime.FuncForPC(reflect.ValueOf(tt).Pointer()).Name()
+		t.Run(name[strings.LastIndex(name, ".")+1:], func(t *testing.T) {
+			drop(t, client)
+			tt(t, client)
+		})
+	}
+}
+
 var (
 	opts = enttest.WithMigrateOptions(
 		migrate.WithDropIndex(true),
