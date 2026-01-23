@@ -1294,12 +1294,7 @@ func (u *updater) node(ctx context.Context, tx dialect.ExecQuerier) error {
 		return err
 	}
 	if !update.Empty() {
-		var res sql.Result
-		query, args := update.Query()
-		if err := tx.Exec(ctx, query, args, &res); err != nil {
-			return err
-		}
-		affected, err := res.RowsAffected()
+		affected, err := execUpdate(ctx, tx, update, u.Node.ID.Column)
 		if err != nil {
 			return err
 		}
@@ -1537,14 +1532,7 @@ func (u *updater) ensureExists(ctx context.Context) error {
 	var query string
 	var args []any
 
-	// YDB doesn't fully support EXISTS in all contexts.
-	// Use COUNT(*) > 0 approach instead for better compatibility.
-	if selector.Dialect() == dialect.YDB {
-		selector.Count("*")
-		query, args = selector.Query()
-	} else {
-		query, args = u.builder.SelectExpr(sql.Exists(selector)).Query()
-	}
+	query, args = u.builder.SelectExpr(sql.Exists(selector)).Query()
 
 	rows := &sql.Rows{}
 	if err := u.tx.Query(ctx, query, args, rows); err != nil {
@@ -1552,21 +1540,10 @@ func (u *updater) ensureExists(ctx context.Context) error {
 	}
 	defer rows.Close()
 
-	var found bool
-	if selector.Dialect() == dialect.YDB {
-		count, err := sql.ScanInt(rows)
-		if err != nil {
-			return err
-		}
-		found = count > 0
-	} else {
-		var err error
-		found, err = sql.ScanBool(rows)
-		if err != nil {
-			return err
-		}
+	found, err := sql.ScanBool(rows)
+	if err != nil {
+		return err
 	}
-
 	if !found {
 		return &NotFoundError{table: u.Node.Table, id: u.Node.ID.Value}
 	}
@@ -2052,36 +2029,9 @@ func (g *graph) addFKEdges(ctx context.Context, ids []driver.Value, edges []*Edg
 			Set(edge.Columns[0], id).
 			Where(sql.And(p, sql.IsNull(edge.Columns[0])))
 
-		var affected int64
-
-		// YDB's RowsAffected() is incostistent.
-		// Use UPDATE ... RETURNING to count affected rows instead.
-		if g.builder.Dialect() == dialect.YDB {
-			update.Returning(edge.Target.IDSpec.Column)
-			query, args := update.Query()
-			rows := &sql.Rows{}
-			if err := g.tx.Query(ctx, query, args, rows); err != nil {
-				return fmt.Errorf("add %s edge for table %s: %w", edge.Rel, edge.Table, err)
-			}
-			for rows.Next() {
-				affected++
-			}
-			if err := rows.Err(); err != nil {
-				rows.Close()
-				return err
-			}
-			rows.Close()
-		} else {
-			query, args := update.Query()
-			var res sql.Result
-			if err := g.tx.Exec(ctx, query, args, &res); err != nil {
-				return fmt.Errorf("add %s edge for table %s: %w", edge.Rel, edge.Table, err)
-			}
-			n, err := res.RowsAffected()
-			if err != nil {
-				return err
-			}
-			affected = n
+		affected, err := execUpdate(ctx, g.tx, update, edge.Target.IDSpec.Column)
+		if err != nil {
+			return fmt.Errorf("add %s edge for table %s: %w", edge.Rel, edge.Table, err)
 		}
 
 		// Setting the FK value of the "other" table without clearing it before, is not allowed.
@@ -2108,6 +2058,44 @@ func hasExternalEdges(addEdges, clearEdges map[Rel][]*EdgeSpec) bool {
 		}
 	}
 	return false
+}
+
+// execUpdate executes an UPDATE and returns the number of affected rows.
+// For YDB, it uses RETURNING clause since RowsAffected() is unreliable.
+func execUpdate(
+	ctx context.Context,
+	tx dialect.ExecQuerier,
+	update *sql.UpdateBuilder,
+	returningColumn string,
+) (int64, error) {
+	if update.Dialect() == dialect.YDB {
+		update.Returning(returningColumn)
+
+		query, args := update.Query()
+		rows := &sql.Rows{}
+		if err := tx.Query(ctx, query, args, rows); err != nil {
+			return 0, err
+		}
+		defer rows.Close()
+
+		var affected int64
+		for rows.Next() {
+			affected++
+		}
+
+		if err := rows.Err(); err != nil {
+			return 0, err
+		}
+
+		return affected, nil
+	}
+
+	query, args := update.Query()
+	var res sql.Result
+	if err := tx.Exec(ctx, query, args, &res); err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }
 
 // isExternalEdge reports if the given edge requires an UPDATE
