@@ -1694,7 +1694,18 @@ func Lower(ident string) string {
 
 // Lower wraps the given ident with the LOWER function.
 func (f *Func) Lower(ident string) {
-	f.byName("LOWER", ident)
+	f.Append(func(b *Builder) {
+		if f.dialect == dialect.YDB {
+			f.WriteString("Unicode::ToLower(")
+			b.Ident(ident)
+			f.WriteString(")")
+		} else {
+			f.WriteString("LOWER")
+			f.Wrap(func(b *Builder) {
+				b.Ident(ident)
+			})
+		}
+	})
 }
 
 // Count wraps the ident with the COUNT aggregation function.
