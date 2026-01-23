@@ -162,78 +162,95 @@ func (s *Step) ThroughEdgeTable() bool {
 
 // Neighbors returns a Selector for evaluating the path-step
 // and getting the neighbors of one vertex.
-func Neighbors(dialect string, s *Step) (q *sql.Selector) {
+func Neighbors(dialect string, step *Step) (query *sql.Selector) {
 	builder := sql.Dialect(dialect)
+
 	switch {
-	case s.ThroughEdgeTable():
-		pk1, pk2 := s.Edge.Columns[1], s.Edge.Columns[0]
-		if s.Edge.Inverse {
-			pk1, pk2 = pk2, pk1
+	case step.ThroughEdgeTable():
+		pk1, pk2 := step.Edge.Columns[0], step.Edge.Columns[1]
+		if step.Edge.Inverse {
+			pk2, pk1 = pk1, pk2
 		}
-		to := builder.Table(s.To.Table).Schema(s.To.Schema)
-		join := builder.Table(s.Edge.Table).Schema(s.Edge.Schema)
-		match := builder.Select(join.C(pk1)).
+
+		to := builder.Table(step.To.Table).Schema(step.To.Schema)
+		join := builder.Table(step.Edge.Table).Schema(step.Edge.Schema)
+
+		match := builder.Select(join.C(pk2)).
 			From(join).
-			Where(sql.EQ(join.C(pk2), s.From.V))
-		q = builder.Select().
+			Where(sql.EQ(join.C(pk1), step.From.V))
+
+		query = builder.Select().
 			From(to).
 			Join(match).
-			On(to.C(s.To.Column), match.C(pk1))
-	case s.FromEdgeOwner():
-		t1 := builder.Table(s.To.Table).Schema(s.To.Schema)
-		t2 := builder.Select(s.Edge.Columns[0]).
-			From(builder.Table(s.Edge.Table).Schema(s.Edge.Schema)).
-			Where(sql.EQ(s.From.Column, s.From.V))
-		q = builder.Select().
-			From(t1).
-			Join(t2).
-			On(t1.C(s.To.Column), t2.C(s.Edge.Columns[0]))
-	case s.ToEdgeOwner():
-		q = builder.Select().
-			From(builder.Table(s.To.Table).Schema(s.To.Schema)).
-			Where(sql.EQ(s.Edge.Columns[0], s.From.V))
+			On(to.C(step.To.Column), match.C(pk2))
+
+	case step.FromEdgeOwner():
+		table1 := builder.Table(step.To.Table).Schema(step.To.Schema)
+
+		table2 := builder.Select(step.Edge.Columns[0]).
+			From(builder.Table(step.Edge.Table).Schema(step.Edge.Schema)).
+			Where(sql.EQ(step.From.Column, step.From.V))
+
+		query = builder.Select().
+			From(table1).
+			Join(table2).
+			On(table1.C(step.To.Column), table2.C(step.Edge.Columns[0]))
+
+	case step.ToEdgeOwner():
+		query = builder.Select().
+			From(builder.Table(step.To.Table).Schema(step.To.Schema)).
+			Where(sql.EQ(step.Edge.Columns[0], step.From.V))
 	}
-	return q
+	return query
 }
 
 // SetNeighbors returns a Selector for evaluating the path-step
 // and getting the neighbors of set of vertices.
-func SetNeighbors(dialect string, s *Step) (q *sql.Selector) {
-	set := s.From.V.(*sql.Selector)
+func SetNeighbors(dialect string, step *Step) (query *sql.Selector) {
+	set := step.From.V.(*sql.Selector)
 	builder := sql.Dialect(dialect)
+
 	switch {
-	case s.ThroughEdgeTable():
-		pk1, pk2 := s.Edge.Columns[1], s.Edge.Columns[0]
-		if s.Edge.Inverse {
-			pk1, pk2 = pk2, pk1
+	case step.ThroughEdgeTable():
+		pk1, pk2 := step.Edge.Columns[0], step.Edge.Columns[1]
+		if step.Edge.Inverse {
+			pk2, pk1 = pk1, pk2
 		}
-		to := builder.Table(s.To.Table).Schema(s.To.Schema)
-		set.Select(set.C(s.From.Column))
-		join := builder.Table(s.Edge.Table).Schema(s.Edge.Schema)
-		match := builder.Select(join.C(pk1)).
+
+		to := builder.Table(step.To.Table).Schema(step.To.Schema)
+		join := builder.Table(step.Edge.Table).Schema(step.Edge.Schema)
+
+		set.Select(set.C(step.From.Column))
+
+		match := builder.Select(join.C(pk2)).
 			From(join).
 			Join(set).
-			On(join.C(pk2), set.C(s.From.Column))
-		q = builder.Select().
+			On(join.C(pk1), set.C(step.From.Column))
+
+		query = builder.Select().
 			From(to).
 			Join(match).
-			On(to.C(s.To.Column), match.C(pk1))
-	case s.FromEdgeOwner():
-		t1 := builder.Table(s.To.Table).Schema(s.To.Schema)
-		set.Select(set.C(s.Edge.Columns[0]))
-		q = builder.Select().
-			From(t1).
+			On(to.C(step.To.Column), match.C(pk2))
+
+	case step.FromEdgeOwner():
+		table1 := builder.Table(step.To.Table).Schema(step.To.Schema)
+		set.Select(set.C(step.Edge.Columns[0]))
+
+		query = builder.Select().
+			From(table1).
 			Join(set).
-			On(t1.C(s.To.Column), set.C(s.Edge.Columns[0]))
-	case s.ToEdgeOwner():
-		t1 := builder.Table(s.To.Table).Schema(s.To.Schema)
-		set.Select(set.C(s.From.Column))
-		q = builder.Select().
-			From(t1).
+			On(table1.C(step.To.Column), set.C(step.Edge.Columns[0]))
+
+	case step.ToEdgeOwner():
+		table1 := builder.Table(step.To.Table).Schema(step.To.Schema)
+		set.Select(set.C(step.From.Column))
+
+		query = builder.Select().
+			From(table1).
 			Join(set).
-			On(t1.C(s.Edge.Columns[0]), set.C(s.From.Column))
+			On(table1.C(step.Edge.Columns[0]), set.C(step.From.Column))
 	}
-	return q
+	return query
 }
 
 // HasNeighbors applies on the given Selector a neighbors check.

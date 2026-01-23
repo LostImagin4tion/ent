@@ -1976,9 +1976,9 @@ func SelectExpr(exprs ...Querier) *Selector {
 
 // selection represents a column or an expression selection.
 type selection struct {
-	x  Querier
-	c  string
-	as string
+	x       Querier
+	column  string
+	asAlias string
 }
 
 // Select changes the columns selection of the SELECT statement.
@@ -1986,7 +1986,7 @@ type selection struct {
 func (s *Selector) Select(columns ...string) *Selector {
 	s.selection = make([]selection, len(columns))
 	for i := range columns {
-		s.selection[i] = selection{c: columns[i]}
+		s.selection[i] = selection{column: columns[i]}
 	}
 	return s
 }
@@ -1999,14 +1999,14 @@ func (s *Selector) SelectDistinct(columns ...string) *Selector {
 // AppendSelect appends additional columns to the SELECT statement.
 func (s *Selector) AppendSelect(columns ...string) *Selector {
 	for i := range columns {
-		s.selection = append(s.selection, selection{c: columns[i]})
+		s.selection = append(s.selection, selection{column: columns[i]})
 	}
 	return s
 }
 
 // AppendSelectAs appends additional column to the SELECT statement with the given alias.
 func (s *Selector) AppendSelectAs(column, as string) *Selector {
-	s.selection = append(s.selection, selection{c: column, as: as})
+	s.selection = append(s.selection, selection{column: column, asAlias: as})
 	return s
 }
 
@@ -2037,8 +2037,8 @@ func (s *Selector) AppendSelectExprAs(expr Querier, as string) *Selector {
 		})
 	}
 	s.selection = append(s.selection, selection{
-		x:  x,
-		as: as,
+		x:       x,
+		asAlias: as,
 	})
 	return s
 }
@@ -2066,16 +2066,16 @@ func (s *Selector) FindSelection(name string) (matches []string) {
 	for _, c := range s.selection {
 		switch {
 		// Match aliases.
-		case c.as != "":
-			if ident := s.isIdent(c.as); !ident && c.as == name || ident && s.unquote(c.as) == name {
-				matches = append(matches, c.as)
+		case c.asAlias != "":
+			if ident := s.isIdent(c.asAlias); !ident && c.asAlias == name || ident && s.unquote(c.asAlias) == name {
+				matches = append(matches, c.asAlias)
 			}
 		// Match qualified columns.
-		case c.c != "" && s.isQualified(c.c) && matchC(c.c):
-			matches = append(matches, c.c)
+		case c.column != "" && s.isQualified(c.column) && matchC(c.column):
+			matches = append(matches, c.column)
 		// Match unqualified columns.
-		case c.c != "" && (c.c == name || s.isIdent(c.c) && s.unquote(c.c) == name):
-			matches = append(matches, c.c)
+		case c.column != "" && (c.column == name || s.isIdent(c.column) && s.unquote(c.column) == name):
+			matches = append(matches, c.column)
 		}
 	}
 	return matches
@@ -2085,7 +2085,7 @@ func (s *Selector) FindSelection(name string) (matches []string) {
 func (s *Selector) SelectedColumns() []string {
 	columns := make([]string, 0, len(s.selection))
 	for i := range s.selection {
-		if c := s.selection[i].c; c != "" {
+		if c := s.selection[i].column; c != "" {
 			columns = append(columns, c)
 		}
 	}
@@ -2097,7 +2097,7 @@ func (s *Selector) SelectedColumns() []string {
 func (s *Selector) UnqualifiedColumns() []string {
 	columns := make([]string, 0, len(s.selection))
 	for i := range s.selection {
-		c := s.selection[i].c
+		c := s.selection[i].column
 		if c == "" {
 			continue
 		}
@@ -2975,19 +2975,30 @@ func joinReturning(columns []string, b *Builder) {
 }
 
 func (s *Selector) joinSelect(b *Builder) {
-	for i, sc := range s.selection {
+	for i, selector := range s.selection {
 		if i > 0 {
 			b.Comma()
 		}
+
 		switch {
-		case sc.c != "":
-			b.Ident(sc.c)
-		case sc.x != nil:
-			b.Join(sc.x)
+		case selector.column != "":
+			b.Ident(selector.column)
+		case selector.x != nil:
+			b.Join(selector.x)
 		}
-		if sc.as != "" {
+
+		// YDB returns column names with table prefix (e.g., "users.name" instead of "name"),
+		// so we add aliases to ensure the scanner can match columns correctly.
+		alias := selector.asAlias
+		if alias == "" && b.ydb() && selector.column != "" && !strings.ContainsAny(selector.column, "()") {
+			if idx := strings.LastIndexByte(selector.column, '.'); idx != -1 {
+				alias = selector.column[idx+1:]
+			}
+		}
+
+		if alias != "" {
 			b.WriteString(" AS ")
-			b.Ident(sc.as)
+			b.Ident(alias)
 		}
 	}
 }
