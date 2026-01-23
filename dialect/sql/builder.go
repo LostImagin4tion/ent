@@ -2990,9 +2990,15 @@ func (s *Selector) joinSelect(b *Builder) {
 		// YDB returns column names with table prefix (e.g., "users.name" instead of "name"),
 		// so we add aliases to ensure the scanner can match columns correctly.
 		alias := selector.asAlias
-		if alias == "" && b.ydb() && selector.column != "" && !strings.ContainsAny(selector.column, "()") {
-			if idx := strings.LastIndexByte(selector.column, '.'); idx != -1 {
-				alias = selector.column[idx+1:]
+		if alias == "" && b.ydb() {
+			if selector.column != "" && !strings.ContainsAny(selector.column, "()") {
+				// Qualified column name like "users.name" -> alias "name"
+				if idx := strings.LastIndexByte(selector.column, '.'); idx != -1 {
+					alias = selector.column[idx+1:]
+				}
+			} else if selector.column != "" {
+				// Expression passed as column string like "COUNT(*)" or "SUM(users.age)"
+				alias = exprAlias(selector.column)
 			}
 		}
 
@@ -3001,6 +3007,16 @@ func (s *Selector) joinSelect(b *Builder) {
 			b.Ident(alias)
 		}
 	}
+}
+
+// exprAlias extracts an alias from an aggregate expression for YDB.
+// E.g., "COUNT(*)" -> "count", "SUM(users.age)" -> "sum"
+func exprAlias(expr string) string {
+	expr = strings.ToLower(expr)
+	if idx := strings.IndexByte(expr, '('); idx != -1 {
+		return expr[:idx]
+	}
+	return ""
 }
 
 // implement the table view interface.
