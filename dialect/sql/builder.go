@@ -1376,38 +1376,64 @@ func (p *Predicate) Like(col, pattern string) *Predicate {
 	})
 }
 
-// escape escapes w with the default escape character ('/'),
+// escape escapes word with the default escape character ('\'),
 // to be used by the pattern matching functions below.
 // The second return value indicates if w was escaped or not.
-func escape(w string) (string, bool) {
+func escape(word string) (string, bool) {
+	return escapeWith(word, '\\')
+}
+
+// escapeYDB escapes w with '#' for YDB, since YDB doesn't support '\' in ESCAPE clause.
+func escapeYDB(word string) (string, bool) {
+	return escapeWith(word, '#')
+}
+
+func escapeWith(word string, escChar byte) (string, bool) {
 	var n int
-	for i := range w {
-		if c := w[i]; c == '%' || c == '_' || c == '\\' {
+	for i := range word {
+		if ch := word[i]; ch == '%' || ch == '_' || ch == escChar {
 			n++
 		}
 	}
 	// No characters to escape.
 	if n == 0 {
-		return w, false
+		return word, false
 	}
-	var b strings.Builder
-	b.Grow(len(w) + n)
-	for _, c := range w {
-		if c == '%' || c == '_' || c == '\\' {
-			b.WriteByte('\\')
+
+	var builder strings.Builder
+	builder.Grow(len(word) + n)
+
+	for i := range word {
+		if ch := word[i]; ch == '%' || ch == '_' || ch == escChar {
+			builder.WriteByte(escChar)
 		}
-		b.WriteRune(c)
+		builder.WriteByte(word[i])
 	}
-	return b.String(), true
+	return builder.String(), true
 }
 
 func (p *Predicate) escapedLike(col, left, right, word string) *Predicate {
-	return p.Append(func(b *Builder) {
-		w, escaped := escape(word)
-		b.Ident(col).WriteOp(OpLike)
-		b.Arg(left + w + right)
-		if p.dialect == dialect.SQLite && escaped {
-			p.WriteString(" ESCAPE ").Arg("\\")
+	return p.Append(func(builder *Builder) {
+		var escapedWord string
+		var escaped bool
+
+		if p.dialect == dialect.YDB {
+			escapedWord, escaped = escapeYDB(word)
+		} else {
+			escapedWord, escaped = escape(word)
+		}
+
+		builder.Ident(col).WriteOp(OpLike)
+		builder.Arg(left + escapedWord + right)
+
+		// SQLite and YDB require explicit ESCAPE clause.
+		if escaped {
+			switch p.dialect {
+			case dialect.SQLite:
+				p.WriteString(" ESCAPE ").Arg("\\")
+			case dialect.YDB:
+				p.WriteString(" ESCAPE '#'")
+			}
 		}
 	})
 }
@@ -1415,17 +1441,26 @@ func (p *Predicate) escapedLike(col, left, right, word string) *Predicate {
 // ContainsFold is a helper predicate that applies the LIKE predicate with case-folding.
 func (p *Predicate) escapedLikeFold(col, left, substr, right string) *Predicate {
 	return p.Append(func(b *Builder) {
-		w, escaped := escape(substr)
 		switch b.dialect {
 		case dialect.MySQL:
+			w, _ := escape(substr)
 			// We assume the CHARACTER SET is configured to utf8mb4,
 			// because this how it is defined in dialect/sql/schema.
 			b.Ident(col).WriteString(" COLLATE utf8mb4_general_ci LIKE ")
 			b.Arg(left + strings.ToLower(w) + right)
-		case dialect.Postgres, dialect.YDB:
+		case dialect.Postgres:
+			w, _ := escape(substr)
 			b.Ident(col).WriteString(" ILIKE ")
 			b.Arg(left + strings.ToLower(w) + right)
+		case dialect.YDB:
+			w, escaped := escapeYDB(substr)
+			b.Ident(col).WriteString(" ILIKE ")
+			b.Arg(left + strings.ToLower(w) + right)
+			if escaped {
+				p.WriteString(" ESCAPE '#'")
+			}
 		default: // SQLite.
+			w, escaped := escape(substr)
 			var f Func
 			f.SetDialect(b.dialect)
 			f.Lower(col)
