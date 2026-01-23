@@ -254,49 +254,54 @@ func SetNeighbors(dialect string, step *Step) (query *sql.Selector) {
 }
 
 // HasNeighbors applies on the given Selector a neighbors check.
-func HasNeighbors(q *sql.Selector, s *Step) {
-	builder := sql.Dialect(q.Dialect())
+func HasNeighbors(query *sql.Selector, step *Step) {
+	builder := sql.Dialect(query.Dialect())
+
 	switch {
-	case s.ThroughEdgeTable():
-		pk1 := s.Edge.Columns[0]
-		if s.Edge.Inverse {
-			pk1 = s.Edge.Columns[1]
-		}
-		join := builder.Table(s.Edge.Table).Schema(s.Edge.Schema)
-
-		if q.Dialect() == dialect.YDB {
-			q.LeftSemiJoin(join).On(q.C(s.From.Column), join.C(pk1))
-		} else {
-			q.Where(
-				sql.In(
-					q.C(s.From.Column),
-					builder.Select(join.C(pk1)).From(join),
-				),
-			)
+	case step.ThroughEdgeTable():
+		pk1 := step.Edge.Columns[0]
+		if step.Edge.Inverse {
+			pk1 = step.Edge.Columns[1]
 		}
 
-	case s.FromEdgeOwner():
-		q.Where(sql.NotNull(q.C(s.Edge.Columns[0])))
+		join := builder.Table(step.Edge.Table).Schema(step.Edge.Schema)
+		query.Where(
+			sql.In(
+				query.C(step.From.Column),
+				builder.Select(join.C(pk1)).From(join),
+			),
+		)
 
-	case s.ToEdgeOwner():
-		to := builder.Table(s.Edge.Table).Schema(s.Edge.Schema)
+	case step.FromEdgeOwner():
+		query.Where(sql.NotNull(query.C(step.Edge.Columns[0])))
+
+	case step.ToEdgeOwner():
+		to := builder.Table(step.Edge.Table).Schema(step.Edge.Schema)
 		// In case the edge reside on the same table, give
 		// the edge an alias to make qualifier different.
-		if s.From.Table == s.Edge.Table {
-			to.As(fmt.Sprintf("%s_edge", s.Edge.Table))
+		if step.From.Table == step.Edge.Table {
+			to.As(fmt.Sprintf("%s_edge", step.Edge.Table))
 		}
 
-		if q.Dialect() == dialect.YDB {
-			q.LeftSemiJoin(to).On(q.C(s.From.Column), to.C(s.Edge.Columns[0]))
+		if query.Dialect() == dialect.YDB {
+			// YDB doesn't support correlated subqueries, use IN subquery instead.
+			query.Where(
+				sql.In(
+					query.C(step.From.Column),
+					builder.Select(to.C(step.Edge.Columns[0])).
+						From(to).
+						Where(sql.NotNull(to.C(step.Edge.Columns[0]))),
+				),
+			)
 		} else {
-			q.Where(
+			query.Where(
 				sql.Exists(
-					builder.Select(to.C(s.Edge.Columns[0])).
+					builder.Select(to.C(step.Edge.Columns[0])).
 						From(to).
 						Where(
 							sql.ColumnsEQ(
-								q.C(s.From.Column),
-								to.C(s.Edge.Columns[0]),
+								query.C(step.From.Column),
+								to.C(step.Edge.Columns[0]),
 							),
 						),
 				),
