@@ -1689,7 +1689,7 @@ func Tx(t *testing.T, client *ent.Client) {
 		m.On("onRollback", nil).Once()
 		defer m.AssertExpectations(t)
 		tx.OnRollback(m.rHook())
-		tx.Node.Create().ExecX(ctx)
+		tx.Node.Create().SetValue(0).ExecX(ctx)
 		require.NoError(t, tx.Rollback())
 		require.Zero(t, client.Node.Query().CountX(ctx), "rollback should discard all changes")
 	})
@@ -1706,13 +1706,13 @@ func Tx(t *testing.T, client *ent.Client) {
 				return err
 			})
 		})
-		nde := tx.Node.Create().SaveX(ctx)
+		node := tx.Node.Create().SetValue(0).SaveX(ctx)
 		require.NoError(t, tx.Commit())
 		require.Error(t, tx.Commit(), "should return an error on the second call")
 		require.NotZero(t, client.Node.Query().CountX(ctx), "commit should save all changes")
-		_, err = nde.QueryNext().Count(ctx)
+		_, err = node.QueryNext().Count(ctx)
 		require.Error(t, err, "should not be able to query after tx was closed")
-		require.Zero(t, nde.Unwrap().QueryNext().CountX(ctx), "should be able to query the entity after wrap")
+		require.Zero(t, node.Unwrap().QueryNext().CountX(ctx), "should be able to query the entity after wrap")
 	})
 	t.Run("Nested", func(t *testing.T) {
 		tx, err := client.Tx(ctx)
@@ -1726,8 +1726,19 @@ func Tx(t *testing.T, client *ent.Client) {
 		require.NoError(t, tx.Rollback())
 	})
 	t.Run("TxOptions Rollback", func(t *testing.T) {
-		skip(t, "SQLite")
-		tx, err := client.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+		skip(t, "SQLite", "YDB")
+
+		var txOptions sql.TxOptions
+		if client.Dialect() == dialect.YDB {
+			txOptions = sql.TxOptions{
+				Isolation: stdsql.LevelSnapshot,
+				ReadOnly:  true,
+			}
+		} else {
+			txOptions = sql.TxOptions{ReadOnly: true}
+		}
+
+		tx, err := client.BeginTx(ctx, &txOptions)
 		require.NoError(t, err)
 		var m mocker
 		m.On("onRollback", nil).Once()
@@ -1744,10 +1755,38 @@ func Tx(t *testing.T, client *ent.Client) {
 		require.Error(t, err, "expect creation to fail in read-only tx")
 		require.NoError(t, tx.Rollback())
 	})
+	t.Run("YDB TxOptions Rollback", func(t *testing.T) {
+		if client.Dialect() != dialect.YDB {
+			t.Skip("YDB-specific test")
+		}
+
+		tx, err := client.BeginTx(ctx, &sql.TxOptions{
+			Isolation: stdsql.LevelSnapshot,
+			ReadOnly:  true,
+		})
+		require.NoError(t, err)
+
+		err = tx.Item.Create().Exec(ctx)
+		require.Error(t, err, "expect creation to fail in read-only tx")
+
+		// YDB implicitly invalidates transaction so Rollback() should return err
+		err = tx.Rollback()
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "Transaction not found")
+	})
 	t.Run("TxOptions Commit", func(t *testing.T) {
 		skip(t, "SQLite")
-		tx, err := client.BeginTx(ctx, &sql.TxOptions{Isolation: stdsql.LevelReadCommitted})
+
+		var txOptions sql.TxOptions
+		if client.Dialect() == dialect.YDB {
+			txOptions = sql.TxOptions{Isolation: stdsql.LevelSerializable}
+		} else {
+			txOptions = sql.TxOptions{Isolation: stdsql.LevelReadCommitted}
+		}
+
+		tx, err := client.BeginTx(ctx, &txOptions)
 		require.NoError(t, err)
+
 		var m mocker
 		m.On("onCommit", nil).Once()
 		defer m.AssertExpectations(t)
