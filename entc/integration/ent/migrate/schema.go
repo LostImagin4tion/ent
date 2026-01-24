@@ -141,7 +141,7 @@ var (
 		{Name: "link_other", Type: field.TypeOther, Nullable: true, SchemaType: map[string]string{"mysql": "varchar(255)", "postgres": "varchar", "sqlite3": "varchar(255)", "ydb": "Utf8"}},
 		{Name: "link_other_func", Type: field.TypeOther, Nullable: true, SchemaType: map[string]string{"mysql": "varchar(255)", "postgres": "varchar", "sqlite3": "varchar(255)", "ydb": "Utf8"}},
 		{Name: "mac", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "macaddr"}},
-		{Name: "string_array", Type: field.TypeOther, Nullable: true, SchemaType: map[string]string{"mysql": "blob", "postgres": "text[]", "sqlite3": "json", "ydb": "Json"}},
+		{Name: "string_array", Type: field.TypeOther, Nullable: true, SchemaType: map[string]string{"mysql": "blob", "postgres": "text[]", "sqlite3": "json", "ydb": "Utf8"}},
 		{Name: "password", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"mysql": "char(32)"}},
 		{Name: "string_scanner", Type: field.TypeString, Nullable: true},
 		{Name: "duration", Type: field.TypeInt64, Nullable: true},
@@ -174,7 +174,7 @@ var (
 		{Name: "nil_pair", Type: field.TypeBytes, Nullable: true},
 		{Name: "vstring", Type: field.TypeString},
 		{Name: "triple", Type: field.TypeString},
-		{Name: "big_int", Type: field.TypeInt, Nullable: true},
+		{Name: "big_int", Type: field.TypeInt, Nullable: true, SchemaType: map[string]string{"ydb": "Utf8"}},
 		{Name: "password_other", Type: field.TypeOther, Nullable: true, SchemaType: map[string]string{"mysql": "char(32)", "postgres": "varchar", "sqlite3": "char(32)", "ydb": "Utf8"}},
 		{Name: "file_field", Type: field.TypeInt, Nullable: true},
 	}

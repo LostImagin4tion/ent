@@ -17,6 +17,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -3599,8 +3600,8 @@ func (b *Builder) Args(a ...any) *Builder {
 //
 //	FormatArg("JSON(?)", b).
 //	FormatArg("ST_GeomFromText(?)", geom)
-func (b *Builder) Argf(format string, a any) *Builder {
-	switch a := a.(type) {
+func (b *Builder) Argf(format string, arg any) *Builder {
+	switch a := arg.(type) {
 	case nil:
 		b.WriteString("NULL")
 		return b
@@ -3613,24 +3614,71 @@ func (b *Builder) Argf(format string, a any) *Builder {
 	}
 	b.total++
 
-	// YDB requires named parameters
+	// YDB requires named parameters with $paramName syntax.
 	if b.ydb() {
-		// Extract parameter name from format (e.g., "$p0" -> "p0")
 		paramName := strings.TrimPrefix(format, "$")
-
-		// Convert the value using standard converter to handle custom types
-		convertedValue, err := driver.DefaultParameterConverter.ConvertValue(a)
-		if err != nil {
-			convertedValue = a
-		}
-
-		b.args = append(b.args, sql.Named(paramName, convertedValue))
+		b.args = append(b.args, sql.Named(paramName, b.convertValueYdb(arg)))
 	} else {
-		b.args = append(b.args, a)
+		b.args = append(b.args, arg)
 	}
 
 	b.WriteString(format)
 	return b
+}
+
+// YDB has strong typing system
+// and YDB driver can't convert type aliases to underlying Go type
+// Therefore, we have to manually handle these edge cases
+func (b *Builder) convertValueYdb(arg any) any {
+	finalValue := arg
+
+	// First check if type implements driver.Valuer
+	if valuer, ok := arg.(driver.Valuer); ok {
+		if v, err := valuer.Value(); err == nil {
+			finalValue = v
+		}
+	} else {
+		// YDB requires exact numeric types.
+		// Convert named types to their base primitive type
+		// while preserving the exact numeric size.
+		typ := reflect.TypeOf(arg)
+		value := reflect.ValueOf(arg)
+
+		switch typ.Kind() {
+		case reflect.Int:
+			finalValue = int(value.Int())
+		case reflect.Int8:
+			finalValue = int8(value.Int())
+		case reflect.Int16:
+			finalValue = int16(value.Int())
+		case reflect.Int32:
+			finalValue = int32(value.Int())
+		case reflect.Int64:
+			finalValue = value.Int()
+		case reflect.Uint:
+			finalValue = uint(value.Uint())
+		case reflect.Uint8:
+			finalValue = uint8(value.Uint())
+		case reflect.Uint16:
+			finalValue = uint16(value.Uint())
+		case reflect.Uint32:
+			finalValue = uint32(value.Uint())
+		case reflect.Uint64:
+			finalValue = value.Uint()
+		case reflect.Float32:
+			finalValue = float32(value.Float())
+		case reflect.Float64:
+			finalValue = value.Float()
+		default:
+			// Convert other custom types (e.g., http.Dir -> string)
+			converted, err := driver.DefaultParameterConverter.ConvertValue(arg)
+			if err == nil {
+				finalValue = converted
+			}
+		}
+	}
+
+	return finalValue
 }
 
 // Comma adds a comma to the query.

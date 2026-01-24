@@ -145,7 +145,7 @@ func (FieldType) Fields() []ent.Field { //nolint:funlen
 				dialect.Postgres: "text[]",
 				dialect.SQLite:   "json",
 				dialect.MySQL:    "blob",
-				dialect.YDB:      "Json",
+				dialect.YDB:      "Utf8",
 			}),
 		field.String("password").
 			Optional().
@@ -292,7 +292,10 @@ func (FieldType) Fields() []ent.Field { //nolint:funlen
 			}),
 		field.Int("big_int").
 			Optional().
-			GoType(BigInt{}),
+			GoType(BigInt{}).
+			SchemaType(map[string]string{
+				dialect.YDB: "Utf8",
+			}),
 		field.Other("password_other", Password("")).
 			Optional().
 			Sensitive().
