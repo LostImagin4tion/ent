@@ -1560,8 +1560,14 @@ func (c *creator) node(ctx context.Context, drv dialect.Driver) error {
 		edges  = EdgeSpecs(c.Edges).GroupRel()
 		insert *sql.InsertBuilder
 	)
+
 	if c.builder.Dialect() == dialect.YDB {
-		insert = c.builder.Upsert(c.Table).Schema(c.Schema)
+		// For YDB: use UPSERT only when OnConflict options are specified,
+		if len(c.CreateSpec.OnConflict) > 0 {
+			insert = c.builder.Upsert(c.Table).Schema(c.Schema)
+		} else {
+			insert = c.builder.Insert(c.Table).Schema(c.Schema)
+		}
 	} else {
 		insert = c.builder.Insert(c.Table).Schema(c.Schema).Default()
 	}
@@ -1709,11 +1715,14 @@ func (c *batchCreator) nodes(ctx context.Context, drv dialect.Driver) error {
 	}
 	sorted := keys(columns)
 
-	// For YDB dialect, always use UPSERT instead of INSERT,
-	// since YDB doesn't support the ON CONFLICT clause.
 	var insert *sql.InsertBuilder
 	if c.builder.Dialect() == dialect.YDB {
-		insert = c.builder.Upsert(c.Nodes[0].Table).Schema(c.Nodes[0].Schema).Columns(sorted...)
+		// For YDB: use UPSERT only when OnConflict options are specified,
+		if len(c.BatchCreateSpec.OnConflict) > 0 {
+			insert = c.builder.Upsert(c.Nodes[0].Table).Schema(c.Nodes[0].Schema).Columns(sorted...)
+		} else {
+			insert = c.builder.Insert(c.Nodes[0].Table).Schema(c.Nodes[0].Schema).Columns(sorted...)
+		}
 	} else {
 		insert = c.builder.Insert(c.Nodes[0].Table).Schema(c.Nodes[0].Schema).Default().Columns(sorted...)
 	}
