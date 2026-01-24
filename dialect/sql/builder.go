@@ -13,6 +13,7 @@ package sql
 
 import (
 	"context"
+	"database/sql"
 	"database/sql/driver"
 	"errors"
 	"fmt"
@@ -3623,7 +3624,7 @@ func (b *Builder) Argf(format string, a any) *Builder {
 			convertedValue = a
 		}
 
-		b.args = append(b.args, driver.NamedValue{Name: paramName, Value: convertedValue})
+		b.args = append(b.args, sql.Named(paramName, convertedValue))
 	} else {
 		b.args = append(b.args, a)
 	}

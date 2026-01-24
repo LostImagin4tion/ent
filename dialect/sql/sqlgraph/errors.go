@@ -28,6 +28,7 @@ func IsUniqueConstraintError(err error) bool {
 		"Error 1062",                 // MySQL
 		"violates unique constraint", // Postgres
 		"UNIQUE constraint failed",   // SQLite
+		"PRECONDITION_FAILED",        // YDB unique index violation
 	} {
 		if strings.Contains(err.Error(), s) {
 			return true
