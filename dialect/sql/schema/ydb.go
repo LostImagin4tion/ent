@@ -203,7 +203,7 @@ func (d *YDB) atUniqueC(
 		}
 	}
 	// Create a unique index for this column.
-	indexName := fmt.Sprintf("%s_%s_index", table1.Name, column1.Name)
+	indexName := fmt.Sprintf("%s_%s_uniq_idx", table1.Name, column1.Name)
 	index := schema.NewUniqueIndex(indexName).AddParts(&schema.IndexPart{C: column2})
 
 	table2.AddIndexes(index)
@@ -232,6 +232,7 @@ func (d *YDB) atIndex(
 	table2 *schema.Table,
 	index2 *schema.Index,
 ) error {
+	indexColumns := make([]string, 0)
 	for _, column1 := range index1.Columns {
 		if isPrimaryKeyColumn(table2, column1.Name) {
 			continue
@@ -247,6 +248,7 @@ func (d *YDB) atIndex(
 		}
 
 		index2.AddParts(&schema.IndexPart{C: column2})
+		indexColumns = append(indexColumns, column2.Name)
 	}
 
 	// Set YDB-specific index attributes.
@@ -281,6 +283,12 @@ func (d *YDB) atIndex(
 			}
 		}
 	}
+
+	index2.Name = fmt.Sprintf(
+		"%s_%s_idx",
+		table2.Name,
+		strings.Join(indexColumns, "_"),
+	)
 
 	index2.AddAttrs(idxAttrs)
 	return nil
