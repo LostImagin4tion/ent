@@ -2419,7 +2419,7 @@ func ConstraintChecks(t *testing.T, client *ent.Client) {
 }
 
 func Lock(t *testing.T, client *ent.Client) {
-	skip(t, "SQLite", "MySQL/5", "Maria/10.2")
+	skip(t, "SQLite", "MySQL/5", "Maria/10.2", "YDB")
 	ctx := context.Background()
 	xabi := client.Pet.Create().SetName("Xabi").SaveX(ctx)
 
