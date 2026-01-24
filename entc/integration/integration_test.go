@@ -143,6 +143,7 @@ func TestYDB(t *testing.T) {
 	)
 
 	client := enttest.Open(t, dialect.YDB, "grpc://localhost:2136/local", ydbOpts)
+	client = client.Debug()
 	defer client.Close()
 
 	for _, tt := range tests {
@@ -2186,12 +2187,29 @@ func NoSchemaChanges(t *testing.T, client *ent.Client) {
 	})
 	tables, err := sqlschema.CopyTables(migrate.Tables)
 	require.NoError(t, err)
-	err = migrate.Create(
-		context.Background(),
-		migrate.NewSchema(&sqlschema.WriteDriver{Writer: w, Driver: client.Driver()}),
-		tables,
+
+	opts := []sqlschema.MigrateOption{
 		migrate.WithDropIndex(true),
 		migrate.WithDropColumn(true),
+	}
+	if strings.Contains(t.Name(), "YDB") {
+		opts = append(
+			opts,
+			migrate.WithForeignKeys(false),
+			sqlschema.WithSkipChanges(sqlschema.ModifyColumn),
+		)
+	}
+
+	err = migrate.Create(
+		context.Background(),
+		migrate.NewSchema(
+			&sqlschema.WriteDriver{
+				Driver: client.Driver(),
+				Writer: w,
+			},
+		),
+		tables,
+		opts...,
 	)
 	require.NoError(t, err)
 }

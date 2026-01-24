@@ -67,28 +67,32 @@ func (d *YDB) tableExist(ctx context.Context, conn dialect.ExecQuerier, name str
 
 // atOpen returns a custom Atlas migrate.Driver for YDB.
 func (d *YDB) atOpen(conn dialect.ExecQuerier) (migrate.Driver, error) {
-	var ydbDriver *entdrv.YDBDriver
-
-	switch drv := conn.(type) {
-	case *entdrv.YDBDriver:
-		ydbDriver = drv
-	case *YDB:
-		if ydb, ok := drv.Driver.(*entdrv.YDBDriver); ok {
-			ydbDriver = ydb
-		}
+	ydbDriver := unwrapYDBDriver(conn)
+	if ydbDriver == nil {
+		ydbDriver = unwrapYDBDriver(d.Driver)
 	}
 	if ydbDriver == nil {
-		if ydb, ok := d.Driver.(*entdrv.YDBDriver); ok {
-			ydbDriver = ydb
-		} else {
-			return nil, fmt.Errorf("expected dialect/ydb.YDBDriver, but got %T", conn)
-		}
+		return nil, fmt.Errorf("expected dialect/ydb.YDBDriver, but got %T", conn)
 	}
 
 	return atlas.Open(
 		ydbDriver.NativeDriver(),
 		ydbDriver.DB(),
 	)
+}
+
+func unwrapYDBDriver(driver any) *entdrv.YDBDriver {
+	switch drv := driver.(type) {
+	case *entdrv.YDBDriver:
+		return drv
+	case *YDB:
+		return unwrapYDBDriver(drv.Driver)
+	case *WriteDriver:
+		return unwrapYDBDriver(drv.Driver)
+	case *dialect.DebugDriver:
+		return unwrapYDBDriver(drv.Driver)
+	}
+	return nil
 }
 
 func (d *YDB) atTable(table1 *Table, table2 *schema.Table) {
@@ -180,7 +184,7 @@ func (d *YDB) atTypeC(column1 *Column, column2 *schema.Column) error {
 }
 
 // atUniqueC adds a unique constraint for a column.
-// In YDB, unique constraints are implemented as GLOBAL UNIQUE SYNC indexes.
+// In YDB, unique constraints are implemented as GLOBAL UNIQUE indexes.
 func (d *YDB) atUniqueC(
 	table1 *Table,
 	column1 *Column,
@@ -199,8 +203,8 @@ func (d *YDB) atUniqueC(
 		}
 	}
 	// Create a unique index for this column.
-	idxName := fmt.Sprintf("%s_%s_index", table1.Name, column1.Name)
-	index := schema.NewUniqueIndex(idxName).AddColumns(column2)
+	indexName := fmt.Sprintf("%s_%s_index", table1.Name, column1.Name)
+	index := schema.NewUniqueIndex(indexName).AddParts(&schema.IndexPart{C: column2})
 
 	table2.AddIndexes(index)
 }
@@ -271,6 +275,9 @@ func (d *YDB) atIndex(
 
 			if strings.Contains(upperIndexType, "ASYNC") {
 				idxAttrs.Async = true
+			}
+			if strings.Contains(upperIndexType, "UNIQUE") {
+				index2.Unique = true
 			}
 		}
 	}
