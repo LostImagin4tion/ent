@@ -2000,16 +2000,25 @@ func (g *graph) clearFKEdges(ctx context.Context, ids []driver.Value, edges []*E
 		}
 		// O2O relations can be cleared without
 		// passing the target ids.
-		pred := matchID(edge.Columns[0], ids)
+		predicate := matchID(edge.Columns[0], ids)
 		if nodes := edge.Target.Nodes; len(nodes) > 0 {
-			pred = matchIDs(edge.Target.IDSpec.Column, edge.Target.Nodes, edge.Columns[0], ids)
+			predicate = matchIDs(edge.Target.IDSpec.Column, edge.Target.Nodes, edge.Columns[0], ids)
 		}
+
+		// YDB has a bug with UPDATE when non-nullable columns are not in SET clause.
+		if g.builder.Dialect() == dialect.YDB {
+			if _, err := g.replaceFK(ctx, nil, edge, predicate); err != nil {
+				return fmt.Errorf("clear %s edge for table %s: %w", edge.Rel, edge.Table, err)
+			}
+			continue
+		}
+
 		query, args := g.builder.Update(edge.Table).
 			SetNull(edge.Columns[0]).
-			Where(pred).
+			Where(predicate).
 			Query()
 		if err := g.tx.Exec(ctx, query, args, nil); err != nil {
-			return fmt.Errorf("add %s edge for table %s: %w", edge.Rel, edge.Table, err)
+			return fmt.Errorf("clear %s edge for table %s: %w", edge.Rel, edge.Table, err)
 		}
 	}
 	return nil
@@ -2026,19 +2035,34 @@ func (g *graph) addFKEdges(ctx context.Context, ids []driver.Value, edges []*Edg
 		if edge.Rel == O2O && edge.Inverse {
 			continue
 		}
-		p := sql.EQ(edge.Target.IDSpec.Column, edge.Target.Nodes[0])
+		pk := edge.Target.IDSpec.Column
+		predicate := sql.EQ(pk, edge.Target.Nodes[0])
 		// Use "IN" predicate instead of list of "OR"
 		// in case of more than on nodes to connect.
 		if len(edge.Target.Nodes) > 1 {
-			p = sql.InValues(edge.Target.IDSpec.Column, edge.Target.Nodes...)
+			predicate = sql.InValues(pk, edge.Target.Nodes...)
 		}
 
-		update := g.builder.Update(edge.Table).
-			Schema(edge.Schema).
-			Set(edge.Columns[0], id).
-			Where(sql.And(p, sql.IsNull(edge.Columns[0])))
+		var (
+			affected int64
+			err      error
+		)
 
-		affected, err := execUpdate(ctx, g.tx, update, edge.Target.IDSpec.Column)
+		// YDB has a bug with UPDATE when non-nullable columns are not in SET clause.
+		if g.builder.Dialect() == dialect.YDB {
+			affected, err = g.replaceFK(
+				ctx,
+				id,
+				edge,
+				sql.And(predicate, sql.IsNull(edge.Columns[0])),
+			)
+		} else {
+			update := g.builder.Update(edge.Table).
+				Schema(edge.Schema).
+				Set(edge.Columns[0], id).
+				Where(sql.And(predicate, sql.IsNull(edge.Columns[0])))
+			affected, err = execUpdate(ctx, g.tx, update, pk)
+		}
 		if err != nil {
 			return fmt.Errorf("add %s edge for table %s: %w", edge.Rel, edge.Table, err)
 		}
@@ -2050,6 +2074,80 @@ func (g *graph) addFKEdges(ctx context.Context, ids []driver.Value, edges []*Edg
 		}
 	}
 	return nil
+}
+
+// replaceFK handles FK updates for YDB using SELECT + REPLACE INTO pattern.
+// YDB has a bug where UPDATE fails if non-nullable columns are not in SET clause.
+// Workaround: SELECT the row first to get all columns, then use REPLACE INTO.
+// newValue is the new FK value (nil to clear).
+func (g *graph) replaceFK(
+	ctx context.Context,
+	newValue driver.Value,
+	edge *EdgeSpec,
+	pred *sql.Predicate,
+) (int64, error) {
+	fkCol := edge.Columns[0]
+
+	// Select rows that match the condition
+	selectQuery := g.builder.Select("*").
+		From(sql.Table(edge.Table).Schema(edge.Schema)).
+		Where(pred)
+
+	query, args := selectQuery.Query()
+	rows := &sql.Rows{}
+	if err := g.tx.Query(ctx, query, args, rows); err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	// Get column names
+	columns, err := rows.Columns()
+	if err != nil {
+		return 0, err
+	}
+
+	// Process each row and replace with updated FK
+	var affected int64
+	for rows.Next() {
+		// Create scan destinations
+		values := make([]any, len(columns))
+		valuePtrs := make([]any, len(columns))
+		for i := range values {
+			valuePtrs[i] = &values[i]
+		}
+
+		if err := rows.Scan(valuePtrs...); err != nil {
+			return 0, err
+		}
+
+		// Build REPLACE INTO with all columns, replacing FK value
+		replace := sql.Dialect(dialect.YDB).
+			Replace(edge.Table).
+			Schema(edge.Schema).
+			Columns(columns...)
+
+		rowValues := make([]any, len(columns))
+		for i, col := range columns {
+			if col == fkCol {
+				rowValues[i] = newValue // Set new FK value (or nil to clear)
+			} else {
+				rowValues[i] = values[i] // Keep existing value
+			}
+		}
+		replace.Values(rowValues...)
+
+		replaceQuery, replaceArgs := replace.Query()
+		if err := g.tx.Exec(ctx, replaceQuery, replaceArgs, nil); err != nil {
+			return 0, err
+		}
+		affected++
+	}
+
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+
+	return affected, nil
 }
 
 func hasExternalEdges(addEdges, clearEdges map[Rel][]*EdgeSpec) bool {
