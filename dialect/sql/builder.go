@@ -13,7 +13,6 @@ package sql
 
 import (
 	"context"
-	"database/sql"
 	"database/sql/driver"
 	"errors"
 	"fmt"
@@ -3709,7 +3708,10 @@ func (b *Builder) Argf(format string, arg any) *Builder {
 	// YDB requires named parameters with $paramName syntax.
 	if b.ydb() {
 		paramName := strings.TrimPrefix(format, "$")
-		b.args = append(b.args, sql.Named(paramName, b.convertValueYdb(arg)))
+		b.args = append(b.args, driver.NamedValue{
+			Name:  paramName,
+			Value: b.convertValueYdb(arg),
+		})
 	} else {
 		b.args = append(b.args, arg)
 	}
