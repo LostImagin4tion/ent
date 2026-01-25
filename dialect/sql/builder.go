@@ -3041,7 +3041,10 @@ func (s *Selector) joinSelect(b *Builder) {
 		// so we add aliases to ensure the scanner can match columns correctly.
 		alias := selector.asAlias
 		if alias == "" && b.ydb() {
-			if selector.column != "" && !strings.ContainsAny(selector.column, "()") {
+			// Skip if the column already has an alias (contains " AS ")
+			if selector.column != "" && strings.Contains(strings.ToUpper(selector.column), " AS ") {
+				// Already has an alias, don't add another one
+			} else if selector.column != "" && !strings.ContainsAny(selector.column, "()") {
 				// Qualified column name like "users.name" -> alias "name"
 				if idx := strings.LastIndexByte(selector.column, '.'); idx != -1 {
 					alias = selector.column[idx+1:]
