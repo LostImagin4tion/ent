@@ -763,8 +763,21 @@ func Select(t *testing.T, client *ent.Client) {
 				// Append the "users_count" column to the selected columns.
 				AppendSelect(
 					sql.As(sql.Count(t.C(group.UsersPrimaryKey[1])), "users_count"),
-				).
-				GroupBy(s.C(group.FieldID))
+				)
+
+			// YDB requires all non-key and non-aggregated columns to be in GROUP BY
+			if s.Dialect() == dialect.YDB {
+				s.GroupBy(
+					s.C(group.FieldID),
+					s.C(group.FieldActive),
+					s.C(group.FieldExpire),
+					s.C(group.FieldType),
+					s.C(group.FieldMaxUsers),
+					s.C(group.FieldName),
+				)
+			} else {
+				s.GroupBy(s.C(group.FieldID))
+			}
 		}).
 		ScanX(ctx, &gs)
 	require.Len(gs, 2)
@@ -809,7 +822,7 @@ func Select(t *testing.T, client *ent.Client) {
 	// Execute custom update modifier.
 	client.User.Update().
 		Modify(func(u *sql.UpdateBuilder) {
-			u.Set(user.FieldName, sql.Expr(fmt.Sprintf("UPPER(%s)", user.FieldName)))
+			u.Set(user.FieldName, sql.UpperExpr(user.FieldName))
 		}).
 		ExecX(ctx)
 	require.True(allUpper(), "at names must be upper-cased")
@@ -850,8 +863,11 @@ func Select(t *testing.T, client *ent.Client) {
 	}
 
 	// Order by random value should compile a valid query.
-	_, err = client.User.Query().Order(sql.OrderByRand()).All(ctx)
-	require.NoError(err)
+	// YDB doesn't support ORDER BY with constant expressions like Random(seed).
+	if client.Dialect() != dialect.YDB {
+		_, err = client.User.Query().Order(sql.OrderByRand()).All(ctx)
+		require.NoError(err)
+	}
 }
 
 func Aggregate(t *testing.T, client *ent.Client) {
