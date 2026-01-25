@@ -351,6 +351,10 @@ func Sanity(t *testing.T, client *ent.Client) {
 }
 
 func Upsert(t *testing.T, client *ent.Client) {
+	// YDB's UPSERT has different semantics.
+	// it only resolves conflicts on primary key and replaces the entire row.
+	skip(t, "YDB")
+
 	ctx := context.Background()
 	u := client.User.Create().SetName("Ariel").SetAge(30).SetPhone("0000").SaveX(ctx)
 	require.Equal(t, "static", u.Address, "address was set by default func")
