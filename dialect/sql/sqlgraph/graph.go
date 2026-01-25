@@ -1309,7 +1309,7 @@ func (u *updater) node(ctx context.Context, tx dialect.ExecQuerier) error {
 		var err error
 
 		if u.builder.Dialect() == dialect.YDB {
-			affected, err = u.updateReplace(ctx, idPredicate, addEdges, clearEdges)
+			affected, err = u.selectWithUpdate(ctx, idPredicate, addEdges, clearEdges)
 		} else {
 			affected, err = execUpdate(ctx, tx, update, u.Node.ID.Column)
 		}
@@ -1539,20 +1539,14 @@ func (u *updater) iterateUpdates(
 	}
 }
 
-// updateReplace handles UPDATE for YDB using SELECT + REPLACE INTO pattern.
+// selectWithUpdate handles UPDATE for YDB using SELECT + UPDATE pattern.
 // This is needed because YDB has a bug where UPDATE fails if non-nullable columns are not in SET clause.
-func (u *updater) updateReplace(
+func (u *updater) selectWithUpdate(
 	ctx context.Context,
 	idPredicate *sql.Predicate,
 	addEdges map[Rel][]*EdgeSpec,
 	clearEdges map[Rel][]*EdgeSpec,
 ) (int64, error) {
-	// Note: Fields.Add (increment operations) are not supported in REPLACE pattern.
-	// This would require reading the current value and computing the new value.
-	if len(u.Fields.Add) > 0 {
-		return 0, fmt.Errorf("sql/sqlgraph: YDB does not support field increment in UPDATE")
-	}
-
 	// Build the full predicate (id + custom predicate)
 	pred := idPredicate
 	if u.Predicate != nil {
@@ -1579,11 +1573,20 @@ func (u *updater) updateReplace(
 		},
 	)
 
-	return u.graph.replaceRows(
+	addFields := make(map[string]any, len(u.Fields.Add))
+	for _, field := range u.Fields.Add {
+		addFields[field.Column] = field.Value
+	}
+
+	return u.graph.updateWithAllColumns(
 		ctx,
 		u.Node.Table,
 		u.Node.Schema,
 		updates,
+		addFields,
+		map[string]bool{
+			u.Node.ID.Column: true,
+		},
 		pred,
 	)
 }
@@ -2101,12 +2104,25 @@ func (g *graph) clearFKEdges(ctx context.Context, ids []driver.Value, edges []*E
 		// passing the target ids.
 		predicate := matchID(edge.Columns[0], ids)
 		if nodes := edge.Target.Nodes; len(nodes) > 0 {
-			predicate = matchIDs(edge.Target.IDSpec.Column, edge.Target.Nodes, edge.Columns[0], ids)
+			predicate = matchIDs(
+				edge.Target.IDSpec.Column,
+				edge.Target.Nodes,
+				edge.Columns[0],
+				ids,
+			)
 		}
 
 		// YDB has a bug with UPDATE when non-nullable columns are not in SET clause.
 		if g.builder.Dialect() == dialect.YDB {
-			if _, err := g.replaceFK(ctx, nil, edge, predicate); err != nil {
+			updates := map[string]driver.Value{edge.Columns[0]: nil}
+			_, err := g.replaceWithAllColumns(
+				ctx,
+				edge.Table,
+				edge.Schema,
+				updates,
+				predicate,
+			)
+			if err != nil {
 				return fmt.Errorf("clear %s edge for table %s: %w", edge.Rel, edge.Table, err)
 			}
 			continue
@@ -2149,10 +2165,12 @@ func (g *graph) addFKEdges(ctx context.Context, ids []driver.Value, edges []*Edg
 
 		// YDB has a bug with UPDATE when non-nullable columns are not in SET clause.
 		if g.builder.Dialect() == dialect.YDB {
-			affected, err = g.replaceFK(
+			updates := map[string]driver.Value{edge.Columns[0]: id}
+			affected, err = g.replaceWithAllColumns(
 				ctx,
-				id,
-				edge,
+				edge.Table,
+				edge.Schema,
+				updates,
 				sql.And(predicate, sql.IsNull(edge.Columns[0])),
 			)
 		} else {
@@ -2175,32 +2193,20 @@ func (g *graph) addFKEdges(ctx context.Context, ids []driver.Value, edges []*Edg
 	return nil
 }
 
-// replaceFK handles FK updates for YDB using SELECT + REPLACE INTO pattern.
-func (g *graph) replaceFK(
-	ctx context.Context,
-	newValue driver.Value,
-	edge *EdgeSpec,
-	pred *sql.Predicate,
-) (int64, error) {
-	updates := map[string]driver.Value{
-		edge.Columns[0]: newValue,
-	}
-	return g.replaceRows(ctx, edge.Table, edge.Schema, updates, pred)
-}
-
-// replaceRows handles UPDATE for YDB using SELECT + REPLACE INTO pattern.
+// updateWithAllColumns handles UPDATE for YDB by setting ALL columns in the SET clause.
 // YDB has a bug where UPDATE fails if non-nullable columns are not in SET clause.
-// Workaround: SELECT the row first to get all columns with correct types, then use REPLACE INTO.
-//
-// updates is a map of column name to new value (nil means set to NULL).
-func (g *graph) replaceRows(
+// Workaround: SELECT the row first to get all column names, then UPDATE with all columns.
+// skipColumns contains primary key columns that should not be updated.
+func (g *graph) updateWithAllColumns(
 	ctx context.Context,
 	table string,
 	schema string,
 	updates map[string]driver.Value,
+	addFields map[string]any,
+	skipColumns map[string]bool,
 	pred *sql.Predicate,
 ) (int64, error) {
-	// Select rows that match the condition
+	// Select rows that match the condition to get all column names and current values
 	selectQuery := g.builder.Select("*").
 		From(sql.Table(table).Schema(schema)).
 		Where(pred)
@@ -2212,35 +2218,105 @@ func (g *graph) replaceRows(
 	}
 	defer rows.Close()
 
-	// Get column names
 	columns, err := rows.Columns()
 	if err != nil {
 		return 0, err
 	}
 
-	// Process each row and replace with updated values
 	var affected int64
 	for rows.Next() {
-		// Create scan destinations
+		// Scan current values
 		values := make([]any, len(columns))
 		valuePtrs := make([]any, len(columns))
 		for i := range values {
 			valuePtrs[i] = &values[i]
 		}
-
 		if err := rows.Scan(valuePtrs...); err != nil {
 			return 0, err
 		}
 
-		// Build REPLACE INTO with all columns, applying updates
-		replace := sql.Dialect(dialect.YDB).
-			Replace(table).
-			Schema(schema).
-			Columns(columns...)
+		// Build UPDATE with all columns in SET clause (except primary keys)
+		update := g.builder.Update(table).Schema(schema)
+
+		for i, column := range columns {
+			// Skip primary key columns - YDB doesn't allow updating them
+			if skipColumns[column] {
+				continue
+			}
+
+			if newVal, ok := updates[column]; ok {
+				if newVal == nil {
+					update.SetNull(column)
+				} else {
+					update.Set(column, newVal)
+				}
+			} else if addVal, ok := addFields[column]; ok {
+				update.Add(column, addVal)
+			} else {
+				update.Set(column, values[i])
+			}
+		}
+
+		update.Where(pred)
+
+		query, args := update.Query()
+		var res sql.Result
+		if err := g.tx.Exec(ctx, query, args, &res); err != nil {
+			return 0, err
+		}
+		affected++
+	}
+
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+
+	return affected, nil
+}
+
+// replaceWithAllColumns handles FK updates for YDB using SELECT + REPLACE INTO pattern.
+func (g *graph) replaceWithAllColumns(
+	ctx context.Context,
+	table string,
+	schema string,
+	updates map[string]driver.Value,
+	pred *sql.Predicate,
+) (int64, error) {
+	// Select rows that match the condition to get all column names and current values
+	selectQuery := g.builder.Select("*").
+		From(sql.Table(table).Schema(schema)).
+		Where(pred)
+
+	query, args := selectQuery.Query()
+	rows := &sql.Rows{}
+	if err := g.tx.Query(ctx, query, args, rows); err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		return 0, err
+	}
+
+	var affected int64
+	for rows.Next() {
+		// Scan current values
+		values := make([]any, len(columns))
+		valuePtrs := make([]any, len(columns))
+		for i := range values {
+			valuePtrs[i] = &values[i]
+		}
+		if err := rows.Scan(valuePtrs...); err != nil {
+			return 0, err
+		}
+
+		// Build REPLACE INTO with all columns
+		replace := g.builder.Replace(table).Schema(schema).Columns(columns...)
 
 		rowValues := make([]any, len(columns))
-		for i, col := range columns {
-			if newVal, ok := updates[col]; ok {
+		for i, column := range columns {
+			if newVal, ok := updates[column]; ok {
 				rowValues[i] = newVal // Apply update (nil means NULL)
 			} else {
 				rowValues[i] = values[i] // Keep existing value
@@ -2248,8 +2324,8 @@ func (g *graph) replaceRows(
 		}
 		replace.Values(rowValues...)
 
-		replaceQuery, replaceArgs := replace.Query()
-		if err := g.tx.Exec(ctx, replaceQuery, replaceArgs, nil); err != nil {
+		query, args := replace.Query()
+		if err := g.tx.Exec(ctx, query, args, nil); err != nil {
 			return 0, err
 		}
 		affected++
