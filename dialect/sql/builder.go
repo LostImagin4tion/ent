@@ -1960,7 +1960,7 @@ type Selector struct {
 	// generated code such as alternate table schemas.
 	ctx         context.Context
 	as          string
-	selection   []selection
+	selection   []*selection
 	from        []TableView
 	joins       []join
 	collected   [][]*Predicate
@@ -2026,17 +2026,17 @@ func SelectExpr(exprs ...Querier) *Selector {
 
 // selection represents a column or an expression selection.
 type selection struct {
-	x       Querier
-	column  string
-	asAlias string
+	expr   Querier
+	column string
+	alias  string
 }
 
 // Select changes the columns selection of the SELECT statement.
 // Empty selection means all columns *.
 func (s *Selector) Select(columns ...string) *Selector {
-	s.selection = make([]selection, len(columns))
+	s.selection = make([]*selection, len(columns))
 	for i := range columns {
-		s.selection[i] = selection{column: columns[i]}
+		s.selection[i] = &selection{column: columns[i]}
 	}
 	return s
 }
@@ -2049,23 +2049,23 @@ func (s *Selector) SelectDistinct(columns ...string) *Selector {
 // AppendSelect appends additional columns to the SELECT statement.
 func (s *Selector) AppendSelect(columns ...string) *Selector {
 	for i := range columns {
-		s.selection = append(s.selection, selection{column: columns[i]})
+		s.selection = append(s.selection, &selection{column: columns[i]})
 	}
 	return s
 }
 
 // AppendSelectAs appends additional column to the SELECT statement with the given alias.
 func (s *Selector) AppendSelectAs(column, as string) *Selector {
-	s.selection = append(s.selection, selection{column: column, asAlias: as})
+	s.selection = append(s.selection, &selection{column: column, alias: as})
 	return s
 }
 
 // SelectExpr changes the columns selection of the SELECT statement
 // with custom list of expressions.
 func (s *Selector) SelectExpr(exprs ...Querier) *Selector {
-	s.selection = make([]selection, len(exprs))
+	s.selection = make([]*selection, len(exprs))
 	for i := range exprs {
-		s.selection[i] = selection{x: exprs[i]}
+		s.selection[i] = &selection{expr: exprs[i]}
 	}
 	return s
 }
@@ -2073,7 +2073,7 @@ func (s *Selector) SelectExpr(exprs ...Querier) *Selector {
 // AppendSelectExpr appends additional expressions to the SELECT statement.
 func (s *Selector) AppendSelectExpr(exprs ...Querier) *Selector {
 	for i := range exprs {
-		s.selection = append(s.selection, selection{x: exprs[i]})
+		s.selection = append(s.selection, &selection{expr: exprs[i]})
 	}
 	return s
 }
@@ -2086,9 +2086,9 @@ func (s *Selector) AppendSelectExprAs(expr Querier, as string) *Selector {
 			b.S("(").Join(expr).S(")")
 		})
 	}
-	s.selection = append(s.selection, selection{
-		x:       x,
-		asAlias: as,
+	s.selection = append(s.selection, &selection{
+		expr:  x,
+		alias: as,
 	})
 	return s
 }
@@ -2116,9 +2116,9 @@ func (s *Selector) FindSelection(name string) (matches []string) {
 	for _, c := range s.selection {
 		switch {
 		// Match aliases.
-		case c.asAlias != "":
-			if ident := s.isIdent(c.asAlias); !ident && c.asAlias == name || ident && s.unquote(c.asAlias) == name {
-				matches = append(matches, c.asAlias)
+		case c.alias != "":
+			if ident := s.isIdent(c.alias); !ident && c.alias == name || ident && s.unquote(c.alias) == name {
+				matches = append(matches, c.alias)
 			}
 		// Match qualified columns.
 		case c.column != "" && s.isQualified(c.column) && matchC(c.column):
@@ -2738,7 +2738,7 @@ func (s *Selector) Clone() *Selector {
 		group:       append([]string{}, s.group...),
 		order:       append([]any{}, s.order...),
 		assumeOrder: append([]string{}, s.assumeOrder...),
-		selection:   append([]selection{}, s.selection...),
+		selection:   append([]*selection{}, s.selection...),
 	}
 }
 
@@ -2922,6 +2922,9 @@ func (s *Selector) Query() (string, []any) {
 	if len(s.setOps) > 0 {
 		s.joinSetOps(&b)
 	}
+	if b.ydb() && len(s.group) > 0 {
+		s.applyAliasesToOrder()
+	}
 	joinOrder(s.order, &b)
 	s.joinAssumeOrder(&b)
 	if s.limit != nil {
@@ -3025,41 +3028,89 @@ func joinReturning(columns []string, b *Builder) {
 }
 
 func (s *Selector) joinSelect(b *Builder) {
-	for i, selector := range s.selection {
+	for i, selection := range s.selection {
 		if i > 0 {
 			b.Comma()
 		}
 
-		switch {
-		case selector.column != "":
-			b.Ident(selector.column)
-		case selector.x != nil:
-			b.Join(selector.x)
-		}
-
 		// YDB returns column names with table prefix (e.g., "users.name" instead of "name"),
 		// so we add aliases to ensure the scanner can match columns correctly.
-		alias := selector.asAlias
-		if alias == "" && b.ydb() {
-			// Skip if the column already has an alias (contains " AS ")
-			if selector.column != "" && strings.Contains(strings.ToUpper(selector.column), " AS ") {
-				// Already has an alias, don't add another one
-			} else if selector.column != "" && !strings.ContainsAny(selector.column, "()") {
+		if selection.alias == "" && b.ydb() {
+			// If the column already has an alias, extract it
+			upperColumnName := strings.ToUpper(selection.column)
+
+			if idx := strings.LastIndex(upperColumnName, " AS "); idx != -1 {
+				originalColumn := selection.column
+
+				selection.column = strings.TrimSpace(originalColumn[:idx])
+				selection.alias = strings.Trim(originalColumn[idx+4:], " `\"")
+			} else if selection.column != "" && !strings.ContainsAny(selection.column, "()") {
 				// Qualified column name like "users.name" -> alias "name"
-				if idx := strings.LastIndexByte(selector.column, '.'); idx != -1 {
-					alias = selector.column[idx+1:]
+				if idx := strings.LastIndexByte(selection.column, '.'); idx != -1 {
+					selection.alias = selection.column[idx+1:]
 				}
-			} else if selector.column != "" {
+			} else if selection.column != "" {
 				// Expression passed as column string like "COUNT(*)" or "SUM(users.age)"
-				alias = exprAlias(selector.column)
+				selection.alias = exprAlias(selection.column)
 			}
 		}
 
-		if alias != "" {
+		switch {
+		case selection.column != "":
+			b.Ident(selection.column)
+		case selection.expr != nil:
+			b.Join(selection.expr)
+		}
+
+		if selection.alias != "" {
 			b.WriteString(" AS ")
-			b.Ident(alias)
+			b.Ident(selection.alias)
 		}
 	}
+}
+
+// applyAliasesToOrder returns the order slice
+// with qualified column names replaced by their aliases.
+func (s *Selector) applyAliasesToOrder() {
+	// Build a map from qualified column to alias.
+	aliasMap := make(map[string]string)
+	for _, selection := range s.selection {
+		if selection.column == "" {
+			continue
+		}
+		if selection.alias != "" {
+			aliasMap[selection.column] = selection.alias
+		}
+	}
+
+	if len(aliasMap) == 0 {
+		return
+	}
+
+	// Replace qualified columns with aliases in order.
+	result := make([]any, len(s.order))
+	for i, order := range s.order {
+		str, ok := order.(string)
+		if !ok {
+			result[i] = order
+			continue
+		}
+		// Handle "column DESC" or "column ASC" suffixes.
+		column, suffix := str, ""
+		if idx := strings.LastIndex(str, " "); idx != -1 {
+			upper := strings.ToUpper(str[idx+1:])
+			if upper == "ASC" || upper == "DESC" {
+				column = str[:idx]
+				suffix = str[idx:]
+			}
+		}
+		if alias, ok := aliasMap[column]; ok {
+			result[i] = alias + suffix
+		} else {
+			result[i] = order
+		}
+	}
+	s.order = result
 }
 
 // exprAlias extracts an alias from an aggregate expression for YDB.
