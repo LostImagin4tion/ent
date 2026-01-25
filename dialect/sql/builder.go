@@ -1712,6 +1712,42 @@ func (f *Func) Lower(ident string) {
 	})
 }
 
+// Upper wraps the given column with the UPPER function.
+//
+//	P().EQ(sql.Upper("name"), "A8M")
+func Upper(ident string) string {
+	f := &Func{}
+	f.Upper(ident)
+	return f.String()
+}
+
+// Upper wraps the given ident with the UPPER function.
+func (f *Func) Upper(ident string) {
+	f.Append(func(b *Builder) {
+		if f.dialect == dialect.YDB {
+			f.WriteString("Unicode::ToUpper(")
+			b.Ident(ident)
+			f.WriteString(")")
+		} else {
+			f.WriteString("UPPER")
+			f.Wrap(func(b *Builder) {
+				b.Ident(ident)
+			})
+		}
+	})
+}
+
+// UpperExpr returns a dialect-aware UPPER expression.
+func UpperExpr(ident string) Querier {
+	return ExprFunc(func(b *Builder) {
+		if b.Dialect() == dialect.YDB {
+			b.WriteString("Unicode::ToUpper(").Ident(ident).WriteString(")")
+		} else {
+			b.WriteString("UPPER(").Ident(ident).WriteString(")")
+		}
+	})
+}
+
 // Count wraps the ident with the COUNT aggregation function.
 func Count(ident string) string {
 	f := &Func{}
