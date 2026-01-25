@@ -284,7 +284,7 @@ func HasNeighbors(query *sql.Selector, step *Step) {
 		}
 
 		if query.Dialect() == dialect.YDB {
-			// YDB doesn't support correlated subqueries, use IN subquery instead.
+			// YDB doesn't support correlated subqueries, use IN with subquery instead.
 			query.Where(
 				sql.In(
 					query.C(step.From.Column),
@@ -312,109 +312,105 @@ func HasNeighbors(query *sql.Selector, step *Step) {
 
 // HasNeighborsWith applies on the given Selector a neighbors check.
 // The given predicate applies its filtering on the selector.
-func HasNeighborsWith(q *sql.Selector, s *Step, pred func(*sql.Selector)) {
-	builder := sql.Dialect(q.Dialect())
+func HasNeighborsWith(
+	query *sql.Selector,
+	step *Step,
+	predicate func(*sql.Selector),
+) {
+	builder := sql.Dialect(query.Dialect())
+
 	switch {
-	case s.ThroughEdgeTable():
-		pk1, pk2 := s.Edge.Columns[1], s.Edge.Columns[0]
-		if s.Edge.Inverse {
-			pk1, pk2 = pk2, pk1
-		}
-		to := builder.Table(s.To.Table).Schema(s.To.Schema)
-		edge := builder.Table(s.Edge.Table).Schema(s.Edge.Schema)
-
-		if q.Dialect() == dialect.YDB {
-			matches := builder.Select(to.C(s.To.Column)).From(to)
-			matches.WithContext(q.Context())
-			pred(matches)
-
-			join := builder.Select(edge.C(pk2)).
-				From(edge).
-				Join(matches).
-				On(edge.C(pk1), matches.C(s.To.Column))
-
-			q.LeftSemiJoin(join).On(q.C(s.From.Column), join.C(pk2))
-		} else {
-			join := builder.Select(edge.C(pk2)).
-				From(edge).
-				Join(to).
-				On(edge.C(pk1), to.C(s.To.Column))
-			matches := builder.Select().From(to)
-			matches.WithContext(q.Context())
-			pred(matches)
-			join.FromSelect(matches)
-			q.Where(sql.In(q.C(s.From.Column), join))
+	case step.ThroughEdgeTable():
+		pk1, pk2 := step.Edge.Columns[0], step.Edge.Columns[1]
+		if step.Edge.Inverse {
+			pk2, pk1 = pk1, pk2
 		}
 
-	case s.FromEdgeOwner():
-		to := builder.Table(s.To.Table).Schema(s.To.Schema)
+		to := builder.Table(step.To.Table).Schema(step.To.Schema)
+		edge := builder.Table(step.Edge.Table).Schema(step.Edge.Schema)
+
+		join := builder.Select(edge.C(pk1)).
+			From(edge).
+			Join(to).
+			On(edge.C(pk2), to.C(step.To.Column))
+
+		matches := builder.Select().From(to)
+		matches.WithContext(query.Context())
+		predicate(matches)
+		join.FromSelect(matches)
+
+		query.Where(sql.In(query.C(step.From.Column), join))
+
+	case step.FromEdgeOwner():
+		to := builder.Table(step.To.Table).Schema(step.To.Schema)
 		// Avoid ambiguity in case both source
 		// and edge tables are the same.
-		if s.To.Table == q.TableName() {
-			to.As(fmt.Sprintf("%s_edge", s.To.Table))
+		if step.To.Table == query.TableName() {
+			to.As(fmt.Sprintf("%s_edge", step.To.Table))
 			// Choose the alias name until we do not
 			// have a collision. Limit to 5 iterations.
 			for i := 1; i <= 5; i++ {
-				if to.C("c") != q.C("c") {
+				if to.C("c") != query.C("c") {
 					break
 				}
-				to.As(fmt.Sprintf("%s_edge_%d", s.To.Table, i))
+				to.As(fmt.Sprintf("%s_edge_%d", step.To.Table, i))
 			}
 		}
 
-		if q.Dialect() == dialect.YDB {
-			matches := builder.Select(to.C(s.To.Column)).From(to)
-			matches.WithContext(q.Context())
-			pred(matches)
-			q.LeftSemiJoin(matches).On(q.C(s.Edge.Columns[0]), matches.C(s.To.Column))
+		if query.Dialect() == dialect.YDB {
+			// YDB doesn't support correlated subqueries, use IN with subquery instead
+			matches := builder.Select(to.C(step.To.Column)).From(to)
+			matches.WithContext(query.Context())
+			predicate(matches)
+			query.Where(sql.In(query.C(step.Edge.Columns[0]), matches))
 		} else {
-			matches := builder.Select(to.C(s.To.Column)).
+			matches := builder.Select(to.C(step.To.Column)).
 				From(to)
-			matches.WithContext(q.Context())
+			matches.WithContext(query.Context())
 			matches.Where(
 				sql.ColumnsEQ(
-					q.C(s.Edge.Columns[0]),
-					to.C(s.To.Column),
+					query.C(step.Edge.Columns[0]),
+					to.C(step.To.Column),
 				),
 			)
-			pred(matches)
-			q.Where(sql.Exists(matches))
+			predicate(matches)
+			query.Where(sql.Exists(matches))
 		}
 
-	case s.ToEdgeOwner():
-		to := builder.Table(s.Edge.Table).Schema(s.Edge.Schema)
+	case step.ToEdgeOwner():
+		to := builder.Table(step.Edge.Table).Schema(step.Edge.Schema)
 		// Avoid ambiguity in case both source
 		// and edge tables are the same.
-		if s.Edge.Table == q.TableName() {
-			to.As(fmt.Sprintf("%s_edge", s.Edge.Table))
+		if step.Edge.Table == query.TableName() {
+			to.As(fmt.Sprintf("%s_edge", step.Edge.Table))
 			// Choose the alias name until we do not
 			// have a collision. Limit to 5 iterations.
 			for i := 1; i <= 5; i++ {
-				if to.C("c") != q.C("c") {
+				if to.C("c") != query.C("c") {
 					break
 				}
-				to.As(fmt.Sprintf("%s_edge_%d", s.Edge.Table, i))
+				to.As(fmt.Sprintf("%s_edge_%d", step.Edge.Table, i))
 			}
 		}
 
-		if q.Dialect() == dialect.YDB {
-			// YDB: Use LEFT SEMI JOIN for better optimizer support.
-			matches := builder.Select(to.C(s.Edge.Columns[0])).From(to)
-			matches.WithContext(q.Context())
-			pred(matches)
-			q.LeftSemiJoin(matches).On(q.C(s.From.Column), matches.C(s.Edge.Columns[0]))
+		if query.Dialect() == dialect.YDB {
+			// YDB doesn't support correlated subqueries, using IN with subquery instead
+			matches := builder.Select(to.C(step.Edge.Columns[0])).From(to)
+			matches.WithContext(query.Context())
+			predicate(matches)
+			query.Where(sql.In(query.C(step.From.Column), matches))
 		} else {
-			matches := builder.Select(to.C(s.Edge.Columns[0])).
+			matches := builder.Select(to.C(step.Edge.Columns[0])).
 				From(to)
-			matches.WithContext(q.Context())
+			matches.WithContext(query.Context())
 			matches.Where(
 				sql.ColumnsEQ(
-					q.C(s.From.Column),
-					to.C(s.Edge.Columns[0]),
+					query.C(step.From.Column),
+					to.C(step.Edge.Columns[0]),
 				),
 			)
-			pred(matches)
-			q.Where(sql.Exists(matches))
+			predicate(matches)
+			query.Where(sql.Exists(matches))
 		}
 	}
 }

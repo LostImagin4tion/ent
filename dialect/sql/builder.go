@@ -22,6 +22,8 @@ import (
 	"strings"
 
 	"entgo.io/ent/dialect"
+
+	"github.com/google/uuid"
 )
 
 // Querier wraps the basic Query method that is implemented
@@ -3632,12 +3634,14 @@ func (b *Builder) Argf(format string, arg any) *Builder {
 func (b *Builder) convertValueYdb(arg any) any {
 	finalValue := arg
 
-	// First check if type implements driver.Valuer
-	if valuer, ok := arg.(driver.Valuer); ok {
-		if v, err := valuer.Value(); err == nil {
+	switch casted := arg.(type) {
+	case uuid.UUID:
+		finalValue = casted
+	case driver.Valuer:
+		if v, err := casted.Value(); err == nil {
 			finalValue = v
 		}
-	} else {
+	default:
 		// YDB requires exact numeric types.
 		// Convert named types to their base primitive type
 		// while preserving the exact numeric size.
