@@ -1516,6 +1516,12 @@ func (p *Predicate) ColumnsHasPrefix(col, prefixC string) *Predicate {
 			if p.dialect == dialect.SQLite {
 				p.WriteString(" ESCAPE ").Arg("\\")
 			}
+		case dialect.YDB:
+			b.S("StartsWith(").
+				Ident(col).
+				S(", ").
+				Ident(prefixC).
+				S(")")
 		default:
 			b.AddError(fmt.Errorf("ColumnsHasPrefix is not supported by %q", p.dialect))
 		}
