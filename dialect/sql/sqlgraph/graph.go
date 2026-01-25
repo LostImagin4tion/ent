@@ -994,17 +994,32 @@ func NewDeleteSpec(table string, id *FieldSpec) *DeleteSpec {
 func DeleteNodes(ctx context.Context, drv dialect.Driver, spec *DeleteSpec) (int, error) {
 	var affected int
 	op := func(ctx context.Context, d dialect.Driver) error {
-		var (
-			res     sql.Result
-			builder = sql.Dialect(drv.Dialect())
-		)
+		builder := sql.Dialect(drv.Dialect())
 		selector := builder.Select().
 			From(builder.Table(spec.Node.Table).Schema(spec.Node.Schema)).
 			WithContext(ctx)
 		if pred := spec.Predicate; pred != nil {
 			pred(selector)
 		}
-		query, args := builder.Delete(spec.Node.Table).Schema(spec.Node.Schema).FromSelect(selector).Query()
+		delete := builder.Delete(spec.Node.Table).Schema(spec.Node.Schema).FromSelect(selector)
+
+		// YDB doesn't return accurate RowsAffected(), so we use RETURNING to count deleted rows.
+		if drv.Dialect() == dialect.YDB {
+			delete.Returning(spec.Node.ID.Column)
+			query, args := delete.Query()
+			rows := &sql.Rows{}
+			if err := d.Query(ctx, query, args, rows); err != nil {
+				return err
+			}
+			defer rows.Close()
+			for rows.Next() {
+				affected++
+			}
+			return rows.Err()
+		}
+
+		query, args := delete.Query()
+		var res sql.Result
 		if err := d.Exec(ctx, query, args, &res); err != nil {
 			return err
 		}
