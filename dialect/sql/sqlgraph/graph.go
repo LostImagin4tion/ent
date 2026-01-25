@@ -1268,19 +1268,19 @@ type updater struct {
 
 func (u *updater) node(ctx context.Context, tx dialect.ExecQuerier) error {
 	var (
-		id         driver.Value
-		idp        *sql.Predicate
-		addEdges   = EdgeSpecs(u.Edges.Add).GroupRel()
-		clearEdges = EdgeSpecs(u.Edges.Clear).GroupRel()
+		id          driver.Value
+		idPredicate *sql.Predicate
+		addEdges    = EdgeSpecs(u.Edges.Add).GroupRel()
+		clearEdges  = EdgeSpecs(u.Edges.Clear).GroupRel()
 	)
 	switch {
 	// In case it is not an edge schema, the id holds the PK
 	// of the node used for linking it with the other nodes.
 	case u.Node.ID != nil:
 		id = u.Node.ID.Value
-		idp = sql.EQ(u.Node.ID.Column, id)
+		idPredicate = sql.EQ(u.Node.ID.Column, id)
 	case len(u.Node.CompositeID) == 2:
-		idp = sql.And(
+		idPredicate = sql.And(
 			sql.EQ(u.Node.CompositeID[0].Column, u.Node.CompositeID[0].Value),
 			sql.EQ(u.Node.CompositeID[1].Column, u.Node.CompositeID[1].Value),
 		)
@@ -1289,7 +1289,7 @@ func (u *updater) node(ctx context.Context, tx dialect.ExecQuerier) error {
 	default:
 		return fmt.Errorf("sql/sqlgraph: missing node id for update table %q", u.Node.Table)
 	}
-	update := u.builder.Update(u.Node.Table).Schema(u.Node.Schema).Where(idp)
+	update := u.builder.Update(u.Node.Table).Schema(u.Node.Schema).Where(idPredicate)
 	if pred := u.Predicate; pred != nil {
 		selector := u.builder.Select().From(u.builder.Table(u.Node.Table).Schema(u.Node.Schema))
 		pred(selector)
@@ -1305,7 +1305,14 @@ func (u *updater) node(ctx context.Context, tx dialect.ExecQuerier) error {
 		return err
 	}
 	if !update.Empty() {
-		affected, err := execUpdate(ctx, tx, update, u.Node.ID.Column)
+		var affected int64
+		var err error
+
+		if u.builder.Dialect() == dialect.YDB {
+			affected, err = u.updateReplace(ctx, idPredicate, addEdges, clearEdges)
+		} else {
+			affected, err = execUpdate(ctx, tx, update, u.Node.ID.Column)
+		}
 		if err != nil {
 			return err
 		}
@@ -1333,7 +1340,7 @@ func (u *updater) node(ctx context.Context, tx dialect.ExecQuerier) error {
 		// Skip adding the custom predicates that were attached
 		// to the updater as they may point to columns that were
 		// changed by the UPDATE statement.
-		Where(idp)
+		Where(idPredicate)
 	rows := &sql.Rows{}
 	query, args := selector.Query()
 	if err := tx.Query(ctx, query, args, rows); err != nil {
@@ -1463,31 +1470,17 @@ func (u *updater) setExternalEdges(ctx context.Context, ids []driver.Value, addE
 }
 
 // setTableColumns sets the table columns and foreign_keys used in insert.
-func (u *updater) setTableColumns(update *sql.UpdateBuilder, addEdges, clearEdges map[Rel][]*EdgeSpec) error {
-	// Avoid multiple assignments to the same column.
-	setEdges := make(map[string]bool)
-	for _, e := range addEdges[M2O] {
-		setEdges[e.Columns[0]] = true
-	}
-	for _, e := range addEdges[O2O] {
-		if e.Inverse || e.Bidi {
-			setEdges[e.Columns[0]] = true
-		}
-	}
-	for _, fi := range u.Fields.Clear {
-		update.SetNull(fi.Column)
-	}
-	for _, e := range clearEdges[M2O] {
-		if col := e.Columns[0]; !setEdges[col] {
-			update.SetNull(col)
-		}
-	}
-	for _, e := range clearEdges[O2O] {
-		col := e.Columns[0]
-		if (e.Inverse || e.Bidi) && !setEdges[col] {
-			update.SetNull(col)
-		}
-	}
+func (u *updater) setTableColumns(
+	update *sql.UpdateBuilder,
+	addEdges map[Rel][]*EdgeSpec,
+	clearEdges map[Rel][]*EdgeSpec,
+) error {
+	u.iterateUpdates(
+		addEdges,
+		clearEdges,
+		func(column string) { update.SetNull(column) },
+		func(column string, value driver.Value) { update.Set(column, value) },
+	)
 	err := setTableColumns(u.Fields.Set, addEdges, func(column string, value driver.Value) {
 		update.Set(column, value)
 	})
@@ -1498,6 +1491,101 @@ func (u *updater) setTableColumns(update *sql.UpdateBuilder, addEdges, clearEdge
 		update.Add(fi.Column, fi.Value)
 	}
 	return nil
+}
+
+// iterateUpdates iterates through fields and edges, calling callbacks for clear and set operations.
+func (u *updater) iterateUpdates(
+	addEdges map[Rel][]*EdgeSpec,
+	clearEdges map[Rel][]*EdgeSpec,
+	onClear func(column string),
+	onSet func(column string, value driver.Value),
+) {
+	// Track which edge columns will be set (to avoid clearing them)
+	setEdges := make(map[string]bool)
+	for _, e := range addEdges[M2O] {
+		setEdges[e.Columns[0]] = true
+	}
+	for _, e := range addEdges[O2O] {
+		if e.Inverse || e.Bidi {
+			setEdges[e.Columns[0]] = true
+		}
+	}
+
+	for _, fi := range u.Fields.Clear {
+		onClear(fi.Column)
+	}
+	for _, e := range clearEdges[M2O] {
+		if col := e.Columns[0]; !setEdges[col] {
+			onClear(col)
+		}
+	}
+	for _, e := range clearEdges[O2O] {
+		col := e.Columns[0]
+		if (e.Inverse || e.Bidi) && !setEdges[col] {
+			onClear(col)
+		}
+	}
+
+	for _, fi := range u.Fields.Set {
+		onSet(fi.Column, fi.Value)
+	}
+	for _, e := range addEdges[M2O] {
+		onSet(e.Columns[0], e.Target.Nodes[0])
+	}
+	for _, e := range addEdges[O2O] {
+		if e.Inverse || e.Bidi {
+			onSet(e.Columns[0], e.Target.Nodes[0])
+		}
+	}
+}
+
+// updateReplace handles UPDATE for YDB using SELECT + REPLACE INTO pattern.
+// This is needed because YDB has a bug where UPDATE fails if non-nullable columns are not in SET clause.
+func (u *updater) updateReplace(
+	ctx context.Context,
+	idPredicate *sql.Predicate,
+	addEdges map[Rel][]*EdgeSpec,
+	clearEdges map[Rel][]*EdgeSpec,
+) (int64, error) {
+	// Note: Fields.Add (increment operations) are not supported in REPLACE pattern.
+	// This would require reading the current value and computing the new value.
+	if len(u.Fields.Add) > 0 {
+		return 0, fmt.Errorf("sql/sqlgraph: YDB does not support field increment in UPDATE")
+	}
+
+	// Build the full predicate (id + custom predicate)
+	pred := idPredicate
+	if u.Predicate != nil {
+		selector := u.builder.Select().
+			From(u.builder.Table(u.Node.Table).Schema(u.Node.Schema))
+
+		u.Predicate(selector)
+
+		if p := selector.P(); p != nil {
+			pred = sql.And(idPredicate, p)
+		}
+	}
+
+	// Build updates map using the shared iteration logic
+	updates := make(map[string]driver.Value)
+	u.iterateUpdates(
+		addEdges,
+		clearEdges,
+		func(column string) {
+			updates[column] = nil
+		},
+		func(column string, value driver.Value) {
+			updates[column] = value
+		},
+	)
+
+	return u.graph.replaceRows(
+		ctx,
+		u.Node.Table,
+		u.Node.Schema,
+		updates,
+		pred,
+	)
 }
 
 func (u *updater) scan(rows *sql.Rows) error {
@@ -2088,20 +2176,33 @@ func (g *graph) addFKEdges(ctx context.Context, ids []driver.Value, edges []*Edg
 }
 
 // replaceFK handles FK updates for YDB using SELECT + REPLACE INTO pattern.
-// YDB has a bug where UPDATE fails if non-nullable columns are not in SET clause.
-// Workaround: SELECT the row first to get all columns, then use REPLACE INTO.
-// newValue is the new FK value (nil to clear).
 func (g *graph) replaceFK(
 	ctx context.Context,
 	newValue driver.Value,
 	edge *EdgeSpec,
 	pred *sql.Predicate,
 ) (int64, error) {
-	fkCol := edge.Columns[0]
+	updates := map[string]driver.Value{
+		edge.Columns[0]: newValue,
+	}
+	return g.replaceRows(ctx, edge.Table, edge.Schema, updates, pred)
+}
 
+// replaceRows handles UPDATE for YDB using SELECT + REPLACE INTO pattern.
+// YDB has a bug where UPDATE fails if non-nullable columns are not in SET clause.
+// Workaround: SELECT the row first to get all columns with correct types, then use REPLACE INTO.
+//
+// updates is a map of column name to new value (nil means set to NULL).
+func (g *graph) replaceRows(
+	ctx context.Context,
+	table string,
+	schema string,
+	updates map[string]driver.Value,
+	pred *sql.Predicate,
+) (int64, error) {
 	// Select rows that match the condition
 	selectQuery := g.builder.Select("*").
-		From(sql.Table(edge.Table).Schema(edge.Schema)).
+		From(sql.Table(table).Schema(schema)).
 		Where(pred)
 
 	query, args := selectQuery.Query()
@@ -2117,7 +2218,7 @@ func (g *graph) replaceFK(
 		return 0, err
 	}
 
-	// Process each row and replace with updated FK
+	// Process each row and replace with updated values
 	var affected int64
 	for rows.Next() {
 		// Create scan destinations
@@ -2131,16 +2232,16 @@ func (g *graph) replaceFK(
 			return 0, err
 		}
 
-		// Build REPLACE INTO with all columns, replacing FK value
+		// Build REPLACE INTO with all columns, applying updates
 		replace := sql.Dialect(dialect.YDB).
-			Replace(edge.Table).
-			Schema(edge.Schema).
+			Replace(table).
+			Schema(schema).
 			Columns(columns...)
 
 		rowValues := make([]any, len(columns))
 		for i, col := range columns {
-			if col == fkCol {
-				rowValues[i] = newValue // Set new FK value (or nil to clear)
+			if newVal, ok := updates[col]; ok {
+				rowValues[i] = newVal // Apply update (nil means NULL)
 			} else {
 				rowValues[i] = values[i] // Keep existing value
 			}
