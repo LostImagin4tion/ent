@@ -1108,8 +1108,12 @@ func Delete(t *testing.T, client *ent.Client) {
 
 	info := client.GroupInfo.Create().SetDesc("group info").SaveX(ctx)
 	hub := client.Group.Create().SetInfo(info).SetName("GitHub").SetExpire(time.Now().Add(time.Hour)).SaveX(ctx)
-	err = client.GroupInfo.DeleteOne(info).Exec(ctx)
-	require.True(ent.IsConstraintError(err))
+
+	// YDB doesn't have foreign keys constraints
+	if client.Dialect() != dialect.YDB {
+		err = client.GroupInfo.DeleteOne(info).Exec(ctx)
+		require.True(ent.IsConstraintError(err))
+	}
 
 	// Group.DeleteOneID(id).Where(...), is identical to Group.Delete().Where(group.ID(id), ...),
 	// but, in case the OpDelete is not an allowed operation, the DeleteOne can be used with Where.
@@ -1125,18 +1129,26 @@ func Delete(t *testing.T, client *ent.Client) {
 		Where(group.ExpireLT(time.Now())).
 		Exec(ctx)
 	require.True(ent.IsNotFound(err))
+
 	hub.Update().SetExpire(time.Now().Add(-time.Hour)).ExecX(ctx)
+
 	client.Group.DeleteOne(hub).
 		Where(group.ExpireLT(time.Now())).
 		ExecX(ctx)
 
 	// The behavior described above it also applied to UpdateOne.
-	hub = client.Group.Create().SetInfo(info).SetName("GitHub").SetExpire(time.Now().Add(time.Hour)).SaveX(ctx)
+	hub = client.Group.Create().
+		SetInfo(info).
+		SetName("GitHub").
+		SetExpire(time.Now().Add(time.Hour)).
+		SaveX(ctx)
+
 	err = hub.Update().
 		SetActive(false).
-		SetExpire(time.Time{}).
+		SetExpire(time.Unix(0, 0)).
 		Where(group.ExpireLT(time.Now())). // Expired.
 		Exec(ctx)
+
 	require.True(ent.IsNotFound(err))
 }
 
