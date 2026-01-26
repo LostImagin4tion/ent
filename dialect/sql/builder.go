@@ -3199,10 +3199,12 @@ func (s *Selector) firstTableName() string {
 	return ""
 }
 
-// applyAliasesToOrder returns the order slice
-// with qualified column names replaced by their aliases.
+// applyAliasesToOrder processes ORDER BY columns for YDB compatibility.
+// - When there's a GROUP BY, use aliases
+// - When there are subquery joins, use aliases
+// - When there are simple table joins, keep qualified columns to avoid ambiguity
+// - Otherwise, replace qualified columns with their aliases
 func (s *Selector) applyAliasesToOrder() {
-	// Build a map from qualified column to alias.
 	aliasMap := make(map[string]string)
 	for _, selection := range s.selection {
 		if selection.column == "" {
@@ -3217,7 +3219,11 @@ func (s *Selector) applyAliasesToOrder() {
 		return
 	}
 
-	// Replace qualified columns with aliases in order.
+	hasGroupBy := len(s.group) > 0
+	hasSubqueryJoin := s.hasSubqueryJoin()
+	hasSimpleTableJoin := len(s.joins) > 0 && !hasSubqueryJoin
+
+	// Process ORDER BY columns
 	result := make([]any, len(s.order))
 	for i, order := range s.order {
 		str, ok := order.(string)
@@ -3234,13 +3240,24 @@ func (s *Selector) applyAliasesToOrder() {
 				suffix = str[idx:]
 			}
 		}
-		if alias, ok := aliasMap[column]; ok {
+
+		if alias, ok := aliasMap[column]; (hasGroupBy || hasSubqueryJoin || !hasSimpleTableJoin) && ok {
 			result[i] = alias + suffix
 		} else {
 			result[i] = order
 		}
 	}
 	s.order = result
+}
+
+// hasSubqueryJoin returns true if any join involves a subquery (Selector).
+func (s *Selector) hasSubqueryJoin() bool {
+	for _, j := range s.joins {
+		if _, ok := j.table.(*Selector); ok {
+			return true
+		}
+	}
+	return false
 }
 
 // exprAlias extracts an alias from an aggregate expression for YDB.
