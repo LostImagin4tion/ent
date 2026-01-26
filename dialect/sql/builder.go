@@ -1393,7 +1393,7 @@ func escapeYDB(word string) (string, bool) {
 
 func escapeWith(word string, escChar byte) (string, bool) {
 	var n int
-	for i := range word {
+	for i := 0; i < len(word); i++ {
 		if ch := word[i]; ch == '%' || ch == '_' || ch == escChar {
 			n++
 		}
@@ -1406,7 +1406,7 @@ func escapeWith(word string, escChar byte) (string, bool) {
 	var builder strings.Builder
 	builder.Grow(len(word) + n)
 
-	for i := range word {
+	for i := 0; i < len(word); i++ {
 		if ch := word[i]; ch == '%' || ch == '_' || ch == escChar {
 			builder.WriteByte(escChar)
 		}

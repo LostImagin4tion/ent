@@ -746,7 +746,7 @@ func TestBuilder(t *testing.T) {
 					Join(t2).
 					On(t1.C("id"), t2.C("user_id"))
 			}(),
-			wantQuery: "SELECT `u`.`id`, `g`.`name` FROM `users` AS `u` JOIN `groups` AS `g` ON `u`.`id` = `g`.`user_id`",
+			wantQuery: "SELECT `u`.`id` AS `id`, `g`.`name` AS `name` FROM `users` AS `u` JOIN `groups` AS `g` ON `u`.`id` = `g`.`user_id`",
 		},
 		{
 			input: func() Querier {
@@ -1131,7 +1131,7 @@ func TestBuilder(t *testing.T) {
 		{
 			input: Dialect(dialect.YDB).
 				Select().Count().From(Table("users")),
-			wantQuery: "SELECT COUNT(*) FROM `users`",
+			wantQuery: "SELECT COUNT(*) AS `count` FROM `users`",
 		},
 		{
 			input:     Select().Count(Distinct("id")).From(Table("users")),
@@ -1205,7 +1205,7 @@ func TestBuilder(t *testing.T) {
 				Select("name", Count("*")).
 				From(Table("users")).
 				GroupBy("name"),
-			wantQuery: "SELECT `name`, COUNT(*) FROM `users` GROUP BY `name`",
+			wantQuery: "SELECT `name`, COUNT(*) AS `count` FROM `users` GROUP BY `name`",
 		},
 		{
 			input: Select("name", Count("*")).
@@ -1831,7 +1831,7 @@ AND "users"."id1" < "users"."id2") AND "users"."id1" <= "users"."id2"`, "\n", ""
 					Join(t2).
 					On(t1.C("user_id"), t2.C("id"))
 			}(),
-			wantQuery: "SELECT `orders`.`id`, `u`.`name` FROM `orders` JOIN `users` VIEW `idx_email` AS `u` ON `orders`.`user_id` = `u`.`id`",
+			wantQuery: "SELECT `orders`.`id` AS `id`, `u`.`name` AS `name` FROM `orders` JOIN `users` VIEW `idx_email` AS `u` ON `orders`.`user_id` = `u`.`id`",
 		},
 		{
 			input: func() Querier {
@@ -1843,7 +1843,7 @@ AND "users"."id1" < "users"."id2") AND "users"."id1" <= "users"."id2"`, "\n", ""
 					Join(t2).
 					On(t1.C("ref"), t2.C("ref"))
 			}(),
-			wantQuery: "SELECT `a`.`value`, `b`.`value` FROM `a_table` AS `a` JOIN `b_table` VIEW `b_index_ref` AS `b` ON `a`.`ref` = `b`.`ref`",
+			wantQuery: "SELECT `a`.`value` AS `value`, `b`.`value` AS `value` FROM `a_table` AS `a` JOIN `b_table` VIEW `b_index_ref` AS `b` ON `a`.`ref` = `b`.`ref`",
 		},
 		{
 			input: func() Querier {
@@ -1869,7 +1869,7 @@ AND "users"."id1" < "users"."id2") AND "users"."id1" <= "users"."id2"`, "\n", ""
 					LeftSemiJoin(t2).
 					On(t1.C("id"), t2.C("user_id"))
 			}(),
-			wantQuery: "SELECT `users`.`id`, `users`.`name` FROM `users` LEFT SEMI JOIN `blacklist` AS `t1` ON `users`.`id` = `t1`.`user_id`",
+			wantQuery: "SELECT `users`.`id` AS `id`, `users`.`name` AS `name` FROM `users` LEFT SEMI JOIN `blacklist` AS `t1` ON `users`.`id` = `t1`.`user_id`",
 		},
 		{
 			input: func() Querier {
@@ -1881,7 +1881,7 @@ AND "users"."id1" < "users"."id2") AND "users"."id1" <= "users"."id2"`, "\n", ""
 					RightSemiJoin(t2).
 					On(t1.C("user_id"), t2.C("id"))
 			}(),
-			wantQuery: "SELECT `t1`.`id`, `t1`.`email` FROM `orders` RIGHT SEMI JOIN `active_users` AS `t1` ON `orders`.`user_id` = `t1`.`id`",
+			wantQuery: "SELECT `t1`.`id` AS `id`, `t1`.`email` AS `email` FROM `orders` RIGHT SEMI JOIN `active_users` AS `t1` ON `orders`.`user_id` = `t1`.`id`",
 		},
 		{
 			input: func() Querier {
@@ -1893,7 +1893,7 @@ AND "users"."id1" < "users"."id2") AND "users"."id1" <= "users"."id2"`, "\n", ""
 					LeftOnlyJoin(t2).
 					On(t1.C("id"), t2.C("id"))
 			}(),
-			wantQuery: "SELECT `users`.`id`, `users`.`name` FROM `users` LEFT ONLY JOIN `deleted_users` AS `t1` ON `users`.`id` = `t1`.`id`",
+			wantQuery: "SELECT `users`.`id` AS `id`, `users`.`name` AS `name` FROM `users` LEFT ONLY JOIN `deleted_users` AS `t1` ON `users`.`id` = `t1`.`id`",
 		},
 		{
 			input: func() Querier {
@@ -1905,7 +1905,7 @@ AND "users"."id1" < "users"."id2") AND "users"."id1" <= "users"."id2"`, "\n", ""
 					RightOnlyJoin(t2).
 					On(t1.C("user_id"), t2.C("id"))
 			}(),
-			wantQuery: "SELECT `t1`.`id`, `t1`.`status` FROM `archived` RIGHT ONLY JOIN `users` AS `t1` ON `archived`.`user_id` = `t1`.`id`",
+			wantQuery: "SELECT `t1`.`id` AS `id`, `t1`.`status` AS `status` FROM `archived` RIGHT ONLY JOIN `users` AS `t1` ON `archived`.`user_id` = `t1`.`id`",
 		},
 		{
 			input: func() Querier {
@@ -1917,7 +1917,7 @@ AND "users"."id1" < "users"."id2") AND "users"."id1" <= "users"."id2"`, "\n", ""
 					ExclusionJoin(t2).
 					On(t1.C("key"), t2.C("key"))
 			}(),
-			wantQuery: "SELECT `a`.`key`, `b`.`key` FROM `table_a` AS `a` EXCLUSION JOIN `table_b` AS `b` ON `a`.`key` = `b`.`key`",
+			wantQuery: "SELECT `a`.`key` AS `key`, `b`.`key` AS `key` FROM `table_a` AS `a` EXCLUSION JOIN `table_b` AS `b` ON `a`.`key` = `b`.`key`",
 		},
 		{
 			input: func() Querier {
@@ -1941,7 +1941,7 @@ AND "users"."id1" < "users"."id2") AND "users"."id1" <= "users"."id2"`, "\n", ""
 					LeftJoin(t3).
 					OnP(And(EQ(t3.C("ref"), Expr(t1.C("key"))), EQ(t3.C("column1"), Expr(t2.C("value")))))
 			}(),
-			wantQuery: "SELECT `a`.`value`, `b`.`value`, `c`.`column2` FROM `a_table` AS `a` CROSS JOIN `b_table` AS `b` LEFT JOIN `c_table` AS `c` ON `c`.`ref` = `a`.`key` AND `c`.`column1` = `b`.`value`",
+			wantQuery: "SELECT `a`.`value` AS `value`, `b`.`value` AS `value`, `c`.`column2` AS `column2` FROM `a_table` AS `a` CROSS JOIN `b_table` AS `b` LEFT JOIN `c_table` AS `c` ON `c`.`ref` = `a`.`key` AND `c`.`column1` = `b`.`value`",
 		},
 		{
 			input: Dialect(dialect.YDB).
@@ -2323,7 +2323,7 @@ func TestSelector_VIEW_SecondaryIndex_YDB(t *testing.T) {
 			Where(EQ(users.C("name"), "John Doe")).
 			Query()
 
-		require.Equal(t, "SELECT `t1`.`series_id`, `t1`.`title` FROM `series` VIEW `users_index` AS `t1` JOIN `users` VIEW `name_index` AS `t2` ON `t1`.`uploaded_user_id` = `t2`.`user_id` WHERE `t2`.`name` = $p0", query)
+		require.Equal(t, "SELECT `t1`.`series_id` AS `series_id`, `t1`.`title` AS `title` FROM `series` VIEW `users_index` AS `t1` JOIN `users` VIEW `name_index` AS `t2` ON `t1`.`uploaded_user_id` = `t2`.`user_id` WHERE `t2`.`name` = $p0", query)
 		require.Equal(t, []any{driver.NamedValue{Name: "p0", Value: "John Doe"}}, args)
 	})
 
@@ -2344,7 +2344,7 @@ func TestBatchUpdate_YDB(t *testing.T) {
 			Set("Value2", 0).
 			Where(GT("Key1", 1)).
 			Query()
-		
+
 		require.Equal(t, "BATCH UPDATE `my_table` SET `Value1` = $p0, `Value2` = $p1 WHERE `Key1` > $p2", query)
 		require.Equal(t, []any{
 			driver.NamedValue{Name: "p0", Value: "foo"},
@@ -2358,9 +2358,9 @@ func TestBatchUpdate_YDB(t *testing.T) {
 			BatchUpdate("users").
 			Set("status", "active").
 			Where(GT("created_at", "2024-01-01"))
-		
+
 		query, args, err := builder.QueryErr()
-		
+
 		require.Empty(t, query)
 		require.Empty(t, args)
 		require.Error(t, err)
@@ -2371,9 +2371,9 @@ func TestBatchUpdate_YDB(t *testing.T) {
 			BatchUpdate("users").
 			Set("status", "active").
 			Returning("id", "status")
-		
+
 		query, args, err := builder.QueryErr()
-		
+
 		require.Empty(t, query)
 		require.Empty(t, args)
 		require.Error(t, err)
@@ -2382,13 +2382,13 @@ func TestBatchUpdate_YDB(t *testing.T) {
 	t.Run("BATCH UPDATE with UPDATE ON pattern should error", func(t *testing.T) {
 		d := Dialect(dialect.YDB)
 		subquery := d.Select("id").From(Table("orders")).Where(EQ("status", "pending"))
-		
+
 		builder := d.BatchUpdate("users").
 			Set("status", "active").
 			On(subquery)
-		
+
 		query, args, err := builder.QueryErr()
-		
+
 		require.Empty(t, query)
 		require.Empty(t, args)
 		require.Error(t, err)
@@ -2402,7 +2402,7 @@ func TestBatchDelete_YDB(t *testing.T) {
 		query, args := d.BatchDelete("my_table").
 			Where(And(GT("Key1", 1), GTE("Key2", "One"))).
 			Query()
-		
+
 		require.Equal(t, "BATCH DELETE FROM `my_table` WHERE `Key1` > $p0 AND `Key2` >= $p1", query)
 		require.Equal(t, []any{
 			driver.NamedValue{Name: "p0", Value: 1},
@@ -2414,9 +2414,9 @@ func TestBatchDelete_YDB(t *testing.T) {
 		builder := Dialect(dialect.MySQL).
 			BatchDelete("users").
 			Where(GT("id", 100))
-		
+
 		query, args, err := builder.QueryErr()
-		
+
 		require.Empty(t, query)
 		require.Empty(t, args)
 		require.Error(t, err)
@@ -2427,9 +2427,9 @@ func TestBatchDelete_YDB(t *testing.T) {
 			BatchDelete("users").
 			Where(GT("id", 100)).
 			Returning("id")
-		
+
 		query, args, err := builder.QueryErr()
-		
+
 		require.Empty(t, query)
 		require.Empty(t, args)
 		require.Error(t, err)
@@ -2438,12 +2438,12 @@ func TestBatchDelete_YDB(t *testing.T) {
 	t.Run("BATCH DELETE with DELETE ON pattern should error", func(t *testing.T) {
 		d := Dialect(dialect.YDB)
 		subquery := d.Select("id").From(Table("users")).Where(EQ("status", "deleted"))
-		
+
 		builder := d.BatchDelete("users").
 			On(subquery)
-		
+
 		query, args, err := builder.QueryErr()
-		
+
 		require.Empty(t, query)
 		require.Empty(t, args)
 		require.Error(t, err)
