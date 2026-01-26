@@ -2446,6 +2446,8 @@ func CreateBulk(t *testing.T, client *ent.Client) {
 }
 
 func ConstraintChecks(t *testing.T, client *ent.Client) {
+	skip(t, "YDB")
+
 	var cerr *ent.ConstraintError
 	err := client.Pet.Create().SetName("orphan").SetOwnerID(0).Exec(context.Background())
 	require.True(t, errors.As(err, &cerr))
