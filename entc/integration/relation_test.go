@@ -257,7 +257,7 @@ func O2OSameType(t *testing.T, client *ent.Client) {
 	if client.Dialect() == dialect.YDB {
 		head.Update().ClearNext().ExecX(ctx)
 	}
-	
+
 	client.Node.Delete().Where(node.ValueGT(1)).ExecX(ctx)
 	head = client.Node.Query().OnlyX(ctx)
 
@@ -802,6 +802,12 @@ func M2MSelfRef(t *testing.T, client *ent.Client) {
 	require.Equal(2, client.User.Query().Where(user.HasFriends()).CountX(ctx))
 
 	t.Log("delete inverse should delete association")
+
+	// YDB doesn't have FK constraints, manually clear M2M entries before delete.
+	if client.Dialect() == dialect.YDB {
+		bar.Update().ClearFriends().ExecX(ctx)
+	}
+
 	client.User.DeleteOne(bar).ExecX(ctx)
 	require.False(foo.QueryFriends().ExistX(ctx))
 	require.Zero(client.User.Query().Where(user.HasFriends()).CountX(ctx))
