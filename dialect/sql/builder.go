@@ -3909,21 +3909,21 @@ func (b *Builder) convertValueYdb(arg any) any {
 		case reflect.Int:
 			finalValue = int(value.Int())
 		case reflect.Int8:
-			finalValue = int8(value.Int())
+			finalValue = int8(value.Int()) // #nosec G115
 		case reflect.Int16:
-			finalValue = int16(value.Int())
+			finalValue = int16(value.Int()) // #nosec G115
 		case reflect.Int32:
-			finalValue = int32(value.Int())
+			finalValue = int32(value.Int()) // #nosec G115
 		case reflect.Int64:
 			finalValue = value.Int()
 		case reflect.Uint:
 			finalValue = uint(value.Uint())
 		case reflect.Uint8:
-			finalValue = uint8(value.Uint())
+			finalValue = uint8(value.Uint()) // #nosec G115
 		case reflect.Uint16:
-			finalValue = uint16(value.Uint())
+			finalValue = uint16(value.Uint()) // #nosec G115
 		case reflect.Uint32:
-			finalValue = uint32(value.Uint())
+			finalValue = uint32(value.Uint()) // #nosec G115
 		case reflect.Uint64:
 			finalValue = value.Uint()
 		case reflect.Float32:
