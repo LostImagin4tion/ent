@@ -948,6 +948,12 @@ func M2MSameType(t *testing.T, client *ent.Client) {
 	require.Equal(1, client.User.Query().Where(user.HasFollowing()).CountX(ctx))
 
 	t.Log("delete inverse should delete association")
+
+	// YDB doesn't have FK constraints, manually clear M2M entries before delete.
+	if client.Dialect() == dialect.YDB {
+		bar.Update().ClearFollowing().ExecX(ctx)
+	}
+
 	client.User.DeleteOne(bar).ExecX(ctx)
 	require.False(foo.QueryFollowers().ExistX(ctx))
 	require.Zero(client.User.Query().Where(user.HasFollowers()).CountX(ctx))
