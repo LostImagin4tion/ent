@@ -2963,7 +2963,7 @@ func (s *Selector) Query() (string, []any) {
 	if len(s.setOps) > 0 {
 		s.joinSetOps(&b)
 	}
-	if b.ydb() && len(s.group) > 0 {
+	if b.ydb() {
 		s.applyAliasesToOrder()
 	}
 	joinOrder(s.order, &b)
