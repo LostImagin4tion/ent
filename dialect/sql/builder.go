@@ -1886,6 +1886,7 @@ type SelectTable struct {
 	schema string
 	quote  bool
 	index  string // YDB-specific: secondary index name for VIEW clause
+	cte    bool   // YDB-specific: marks this as a CTE reference
 }
 
 // Table returns a new table selector.
@@ -1960,6 +1961,22 @@ func (s *SelectTable) ref() string {
 	}
 	b := &Builder{dialect: s.dialect}
 	b.writeSchema(s.schema)
+
+	// YDB-specific: CTE references require $ prefix and must have an alias
+	if s.cte && b.ydb() {
+		b.WriteString("$")
+		b.Ident(s.name)
+
+		b.WriteString(" AS ")
+		if s.as != "" {
+			b.Ident(s.as)
+		} else {
+			b.Ident(s.name)
+		}
+
+		return b.String()
+	}
+
 	b.Ident(s.name)
 
 	// YDB-specific: VIEW clause for secondary indexes
@@ -2889,6 +2906,10 @@ func (s *Selector) Having(p *Predicate) *Selector {
 // Query returns query representation of a `SELECT` statement.
 func (s *Selector) Query() (string, []any) {
 	b := s.Builder.clone()
+	// For YDB, mark tables that reference CTEs from the prefix
+	if b.ydb() {
+		s.markCteReferences()
+	}
 	s.joinPrefix(&b)
 	b.WriteString("SELECT ")
 	if s.distinct {
@@ -2987,6 +3008,45 @@ func (s *Selector) joinPrefix(b *Builder) {
 		b.join(s.prefix, " ")
 		b.Pad()
 	}
+}
+
+// markCteReferences marks SelectTable entries in from/joins as CTE references
+// if they match CTE names from the prefix. Used for YDB which requires $ prefix
+// when referencing named expressions (CTEs).
+func (s *Selector) markCteReferences() {
+	cteNames := s.collectCteNames()
+	if len(cteNames) == 0 {
+		return
+	}
+	// Mark FROM tables
+	for _, from := range s.from {
+		if t, ok := from.(*SelectTable); ok {
+			if _, isCte := cteNames[t.name]; isCte {
+				t.cte = true
+			}
+		}
+	}
+	// Mark JOIN tables
+	for _, join := range s.joins {
+		if t, ok := join.table.(*SelectTable); ok {
+			if _, isCte := cteNames[t.name]; isCte {
+				t.cte = true
+			}
+		}
+	}
+}
+
+// collectCteNames returns a set of CTE names from the selector's prefix.
+func (s *Selector) collectCteNames() map[string]any {
+	names := make(map[string]any)
+	for _, p := range s.prefix {
+		if w, ok := p.(*WithBuilder); ok {
+			for _, cte := range w.ctes {
+				names[cte.name] = struct{}{}
+			}
+		}
+	}
+	return names
 }
 
 func (s *Selector) joinLock(b *Builder) {
@@ -3098,7 +3158,17 @@ func (s *Selector) joinSelect(b *Builder) {
 
 		switch {
 		case selection.column != "":
-			b.Ident(selection.column)
+			// YDB requires qualified asterisk (table.*)
+			// when mixing * with other projection items.
+			if b.ydb() && selection.column == "*" && len(s.selection) > 1 {
+				if tableName := s.firstTableName(); tableName != "" {
+					b.Ident(tableName).WriteByte('.').WriteString("*")
+				} else {
+					b.Ident(selection.column)
+				}
+			} else {
+				b.Ident(selection.column)
+			}
 		case selection.expr != nil:
 			b.Join(selection.expr)
 		}
@@ -3108,6 +3178,25 @@ func (s *Selector) joinSelect(b *Builder) {
 			b.Ident(selection.alias)
 		}
 	}
+}
+
+// firstTableName returns the name or alias of the first table in the FROM clause.
+func (s *Selector) firstTableName() string {
+	if len(s.from) == 0 {
+		return ""
+	}
+	switch t := s.from[0].(type) {
+	case *SelectTable:
+		if t.as != "" {
+			return t.as
+		}
+		return t.name
+	case *WithBuilder:
+		return t.Name()
+	case *Selector:
+		return t.as
+	}
+	return ""
 }
 
 // applyAliasesToOrder returns the order slice
@@ -3236,6 +3325,10 @@ func (w *WithBuilder) C(column string) string {
 
 // Query returns query representation of a `WITH` clause.
 func (w *WithBuilder) Query() (string, []any) {
+	if w.ydb() {
+		return w.queryYDB()
+	}
+
 	w.WriteString("WITH ")
 	if w.recursive {
 		w.WriteString("RECURSIVE ")
@@ -3256,6 +3349,55 @@ func (w *WithBuilder) Query() (string, []any) {
 		})
 	}
 	return w.String(), w.args
+}
+
+// YDB uses named expressions ($name = SELECT ...) instead of CTEs
+func (w *WithBuilder) queryYDB() (string, []any) {
+	// Collect all CTE names for marking references
+	cteNames := make(map[string]struct{})
+	for _, cte := range w.ctes {
+		cteNames[cte.name] = struct{}{}
+	}
+
+	for i, cte := range w.ctes {
+		if i > 0 {
+			w.WriteString(" ")
+		}
+
+		// Mark CTE references in the selector's FROM and JOIN tables
+		if cte.s != nil {
+			w.markCteReferencesInSelector(cte.s, cteNames)
+		}
+
+		w.WriteString("$")
+		w.Ident(cte.name)
+		w.WriteString(" = ")
+
+		w.Wrap(func(b *Builder) {
+			b.Join(cte.s)
+		})
+
+		w.WriteString(";")
+	}
+	return w.String(), w.args
+}
+
+// markCteReferencesInSelector marks tables in a selector that reference CTEs.
+func (w *WithBuilder) markCteReferencesInSelector(s *Selector, cteNames map[string]struct{}) {
+	for _, from := range s.from {
+		if t, ok := from.(*SelectTable); ok {
+			if _, isCte := cteNames[t.name]; isCte {
+				t.cte = true
+			}
+		}
+	}
+	for _, join := range s.joins {
+		if t, ok := join.table.(*SelectTable); ok {
+			if _, isCte := cteNames[t.name]; isCte {
+				t.cte = true
+			}
+		}
+	}
 }
 
 // implement the table view interface.
