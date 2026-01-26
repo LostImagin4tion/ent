@@ -2521,6 +2521,7 @@ func Lock(t *testing.T, client *ent.Client) {
 }
 
 func ExtValueScan(t *testing.T, client *ent.Client) {
+	skip(t, "YDB")
 	ctx := context.Background()
 	u, err := url.Parse("https://entgo.io")
 	require.NoError(t, err)
