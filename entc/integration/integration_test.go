@@ -1680,13 +1680,22 @@ func UniqueConstraint(t *testing.T, client *ent.Client) {
 	cm1 := client.Comment.Create().SetUniqueInt(42).SetUniqueFloat(math.Pi).SaveX(ctx)
 	err = client.Comment.Create().SetUniqueInt(42).SetUniqueFloat(math.E).Exec(ctx)
 	require.Error(err)
-	err = client.Comment.Create().SetUniqueInt(7).SetUniqueFloat(math.Pi).Exec(ctx)
-	require.Error(err)
+
+	// YDB doesn't support unique indexes on float columns.
+	if client.Dialect() != dialect.YDB {
+		err = client.Comment.Create().SetUniqueInt(7).SetUniqueFloat(math.Pi).Exec(ctx)
+		require.Error(err)
+	}
+
 	client.Comment.Create().SetUniqueInt(7).SetUniqueFloat(math.E).ExecX(ctx)
 	err = cm1.Update().SetUniqueInt(7).Exec(ctx)
 	require.Error(err)
-	err = cm1.Update().SetUniqueFloat(math.E).Exec(ctx)
-	require.Error(err)
+
+	// YDB doesn't support unique indexes on float columns.
+	if client.Dialect() != dialect.YDB {
+		err = cm1.Update().SetUniqueFloat(math.E).Exec(ctx)
+		require.Error(err)
+	}
 
 	t.Log("unique constraint on time fields")
 	now := time.Now()
