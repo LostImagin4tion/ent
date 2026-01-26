@@ -602,11 +602,12 @@ func OrderByNeighborTerms(q *sql.Selector, s *Step, opts ...sql.OrderTerm) {
 		}
 		toT := build.Table(s.To.Table).Schema(s.To.Schema)
 		joinT := build.Table(s.Edge.Table).Schema(s.Edge.Schema)
-		join = build.Select(pk2).
+		join = build.SelectExpr().
 			From(toT).
 			Join(joinT).
-			On(toT.C(s.To.Column), joinT.C(pk1)).
-			GroupBy(pk2)
+			On(toT.C(s.To.Column), joinT.C(pk1))
+		join.AppendSelect(joinT.C(pk2)).
+			GroupBy(joinT.C(pk2))
 		selectTerms(join, opts)
 		q.LeftJoin(join).
 			On(q.C(s.From.Column), join.C(pk2))
