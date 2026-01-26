@@ -274,6 +274,20 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      ydb:
+        image: ydbplatform/local-ydb:trunk
+        env:
+          GRPC_TLS_PORT: 2135
+          GRPC_PORT: 2136
+          MON_PORT: 8765
+        ports:
+          - 2136:2136
+          - 8765:8765
+        options: >-
+          --hostname localhost
+          --platform linux/amd64
+          --health-cmd "true"
+          --health-start-period 30s
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -476,6 +490,20 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      ydb:
+        image: ydbplatform/local-ydb:trunk
+        env:
+          GRPC_TLS_PORT: 2135
+          GRPC_PORT: 2136
+          MON_PORT: 8765
+        ports:
+          - 2136:2136
+          - 8765:8765
+        options: >-
+          --hostname localhost
+          --platform linux/amd64
+          --health-cmd "true"
+          --health-start-period 30s
     steps:
       - uses: actions/checkout@v4
         with:

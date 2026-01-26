@@ -180,7 +180,7 @@ services:
       - 2136:2136
       - 8765:8765
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8765/healthcheck || exit 1"]
+      test: ["CMD-SHELL", "nc -z localhost 2136"]
       interval: 10s
       timeout: 5s
       retries: 10
