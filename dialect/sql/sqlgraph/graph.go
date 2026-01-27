@@ -1312,7 +1312,11 @@ func (u *updater) node(ctx context.Context, tx dialect.ExecQuerier) error {
 		if u.builder.Dialect() == dialect.YDB {
 			affected, err = u.selectWithUpdate(ctx, idPredicate, addEdges, clearEdges)
 		} else {
-			affected, err = execUpdate(ctx, tx, update, u.Node.ID.Column)
+			column := ""
+			if u.Node.ID != nil {
+				column = u.Node.ID.Column
+			}
+			affected, err = execUpdate(ctx, tx, update, column)
 		}
 		if err != nil {
 			return err
