@@ -14,7 +14,7 @@ require (
 	github.com/lib/pq v1.10.7
 	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/stretchr/testify v1.11.1
-	github.com/ydb-platform/ydb-go-sdk/v3 v3.125.0
+	github.com/ydb-platform/ydb-go-sdk/v3 v3.125.4
 	gocloud.dev v0.28.0
 )
 
@@ -50,6 +50,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace ariga.io/atlas => github.com/LostImagin4tion/atlas v0.0.32
-
-replace github.com/ydb-platform/ydb-go-sdk/v3 => github.com/LostImagin4tion/ydb-go-sdk/v3 v3.0.1-lostimagin4tion
+replace ariga.io/atlas => github.com/LostImagin4tion/atlas v0.0.33

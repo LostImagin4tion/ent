@@ -449,10 +449,8 @@ github.com/DATA-DOG/go-sqlmock v1.5.0/go.mod h1:f/Ixk793poVmq4qj/V1dPUg2JEAKC73Q
 github.com/DataDog/datadog-go v3.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
 github.com/GoogleCloudPlatform/cloudsql-proxy v1.33.1/go.mod h1:n3KDPrdaY2p9Nr0B1allAdjYArwIpXQcitNbsS/Qiok=
 github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
-github.com/LostImagin4tion/atlas v0.0.32 h1:Rbq85w52lDsXvsu6r7yVwr0aAQwgHnC0/1rLQJCHGiY=
-github.com/LostImagin4tion/atlas v0.0.32/go.mod h1:VzlDJYiSJSI4QueADB/IvxpCcSaAaOz3cWvxCFoYkhY=
-github.com/LostImagin4tion/ydb-go-sdk/v3 v3.0.1-lostimagin4tion h1:vGGqY93e5JImp1Wnt7+8brPDvir/u1m/3NqacWeJYVQ=
-github.com/LostImagin4tion/ydb-go-sdk/v3 v3.0.1-lostimagin4tion/go.mod h1:stS1mQYjbJvwwYaYzKyFY9eMiuVXWWXQA6T+SpOLg9c=
+github.com/LostImagin4tion/atlas v0.0.33 h1:RgcQhGG0MZDwheuFRiZu47ihFRDhtcYmbAT6KU3J3v0=
+github.com/LostImagin4tion/atlas v0.0.33/go.mod h1:FtOd0Ry45l3FeDVGVm8tf2SFWg3vHDztylE0eE3EWQ8=
 github.com/Masterminds/semver/v3 v3.1.1/go.mod h1:VPu/7SZ7ePZ3QOrcuXROw5FAcLl4a0cBrbBpGY/8hQs=
 github.com/Microsoft/go-winio v0.4.11/go.mod h1:VhR8bwka0BXejwEJY73c50VrPtXAaKcyvVC4A4RozmA=
 github.com/Microsoft/go-winio v0.4.14/go.mod h1:qXqCSQ3Xa7+6tgxaGTIe4Kpcdsi+P8jBhyzoq1bpyYA=
@@ -1701,6 +1699,8 @@ github.com/xlab/treeprint v1.1.0/go.mod h1:gj5Gd3gPdKtR1ikdDK6fnFLdmIS0X30kTTuNd
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=
 github.com/ydb-platform/ydb-go-genproto v0.0.0-20251222105147-0bf751469a4a h1:nRqONRrMFulP2bTWM2RRnPM1VDhWuBZg4ULXkG4xXdk=
 github.com/ydb-platform/ydb-go-genproto v0.0.0-20251222105147-0bf751469a4a/go.mod h1:Er+FePu1dNUieD+XTMDduGpQuCPssK5Q4BjF+IIXJ3I=
+github.com/ydb-platform/ydb-go-sdk/v3 v3.125.4 h1:GAC7qeNgsibEJkUVzV4z06aBnHR4jqfXsFiQtrY40gI=
+github.com/ydb-platform/ydb-go-sdk/v3 v3.125.4/go.mod h1:stS1mQYjbJvwwYaYzKyFY9eMiuVXWWXQA6T+SpOLg9c=
 github.com/youmark/pkcs8 v0.0.0-20181117223130-1be2e3e5546d/go.mod h1:rHwXgn7JulP+udvsHwJoVG1YGAP6VLg4y9I5dyZdqmA=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=

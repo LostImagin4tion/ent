@@ -37,7 +37,7 @@ require (
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/ydb-platform/ydb-go-genproto v0.0.0-20251222105147-0bf751469a4a // indirect
-	github.com/ydb-platform/ydb-go-sdk/v3 v3.125.0 // indirect
+	github.com/ydb-platform/ydb-go-sdk/v3 v3.125.4 // indirect
 	github.com/zclconf/go-cty v1.14.4 // indirect
 	github.com/zclconf/go-cty-yaml v1.1.0 // indirect
 	golang.org/x/mod v0.30.0 // indirect
@@ -50,6 +50,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace ariga.io/atlas => github.com/LostImagin4tion/atlas v0.0.32
-
-replace github.com/ydb-platform/ydb-go-sdk/v3 => github.com/LostImagin4tion/ydb-go-sdk/v3 v3.0.1-lostimagin4tion
+replace ariga.io/atlas => github.com/LostImagin4tion/atlas v0.0.33
